@@ -1,0 +1,9 @@
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path: /home/hjf/project/ikid_version/football_datasets/football  # dataset root dir
+train: train  # train images (relative to 'path')
+val: train  # val images (relative to 'path')
+test: test # test images (optional)
+
+# Classes
+nc: 1  # number of classes
+names: ['football']  # class names

@@ -1,0 +1,2 @@
+calculate_position_pkg:realtime_detect_pkg
+-DCATKIN_DEVEL_PREFIX=/home/hjf/project/ikid_workspace/devel -DCMAKE_INSTALL_PREFIX=/home/hjf/project/ikid_workspace/install -G Unix Makefiles
