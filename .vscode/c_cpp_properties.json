@@ -7,10 +7,10 @@
       },
       "includePath": [
         "/opt/ros/melodic/include/**",
-        "/home/hjf/project/ikid_ws/src/calculate_position_pkg/include/**",
-        "/home/hjf/project/ikid_ws/src/realtime_detect_pkg/include/**",
+        "./src/calculate_position_pkg/include/**",
+        "./src/realtime_detect_pkg/include/**",
         "/usr/include/**",
-        "/home/hjf/project/ikid_ws/devel/include/**"
+        "./devel/include/**"
       ],
       "name": "ROS",
       "intelliSenseMode": "gcc-x64",

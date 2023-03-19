@@ -13,40 +13,15 @@ MyKalmanFilter *kf = new MyKalmanFilter();
 
 void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	//将接收的消息打印出来
-    ROS_INFO("收到坐标: [x1:%d, y1:%d, x2:%d, y2:%d, x3:%d, y3:%d, x4:%d, y4:%d, ]", msg->x1, msg->y1, msg->x2, msg->y2, msg->x3, msg->y3, msg->x4, msg->y4);
-
-	// Mat image = imread("15.jpg");
-
-	// setlocale(LC_ALL,"");
-    // //2.初始化 ROS 节点:命名(唯一)
-    // ros::init(argc,argv,"listener");
-    // //3.实例化 ROS 句柄
-    // ros::NodeHandle nh;
-
-    // //4.实例化 订阅者 对象
-    // ros::Subscriber sub = nh.subscribe<std_msgs::String>("chatter",10,doMsg);
-    // //5.处理订阅的消息(回调函数)
-
-    // //6.设置循环调用回调函数
-    // ros::spin();//循环读取接收的数据，并调用回调函数处理
+    ROS_INFO("收到坐标: [x1:%d, y1:%d, x2:%d, y2:%d, x3:%d, y3:%d, x4:%d, y4:%d, ]", 
+	msg->x1, msg->y1, msg->x2, msg->y2, msg->x3, msg->y3, msg->x4, msg->y4);
 	
-	// 2D 特征点像素坐标，这里是用PS找出，也可以用鼠标事件画出特征点
 	vector<Point2d> image_points;
-	// image_points.push_back(Point2d(152, 92));
-	// image_points.push_back(Point2d(426, 94));
-	// image_points.push_back(Point2d(126, 380));
-	// image_points.push_back(Point2d(428, 394));
 
 	image_points.push_back(Point2d(msg->x1, msg->y1));
 	image_points.push_back(Point2d(msg->x2, msg->y2));
 	image_points.push_back(Point2d(msg->x3, msg->y3));
 	image_points.push_back(Point2d(msg->x4, msg->y4));
-	
-	// // 画出四个特征点
-	// for (int i = 0; i < image_points.size(); i++)
-	// {
-	// 	circle(image, image_points[i], 3, Scalar(0, 0, 255), -1);
-	// }
 
 	// 3D 特征点世界坐标，与像素坐标对应，单位是cm
 	std::vector<Point3d> model_points;
@@ -175,7 +150,7 @@ int main(int argc, char **argv)
     calculate_position_pkg::image_points p;
  
     //初始化ros节点
-    ros::init(argc, argv, "listener_image_points");
+    ros::init(argc, argv, "calculate_position");
  
     //创建节点句柄
     ros::NodeHandle nh;
