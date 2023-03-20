@@ -101,6 +101,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   image_points.msg
+  calculate_position_result.msg
 )
 
 generate_messages(

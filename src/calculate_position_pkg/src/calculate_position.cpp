@@ -3,10 +3,13 @@
 #include <ros/ros.h>
 #include "std_msgs/String.h"
 #include "calculate_position_pkg/image_points.h"
+#include "calculate_position_pkg/calculate_position_result.h"
 #include "calculate_position/kalman_filter.h"
 
 using namespace std;
 using namespace cv;
+
+ros::Publisher pub_cal_pos_res;
 
 // MyKalmanFilter kf;
 MyKalmanFilter *kf = new MyKalmanFilter();
@@ -125,6 +128,11 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 		fputs(ch, fp);
 		fclose(fp);
 	}
+
+	calculate_position_pkg::calculate_position_result cal_pos_res;
+	cal_pos_res.x1 = msg->x1;
+	pub_cal_pos_res.publish(cal_pos_res);
+
 }
 
 void clearTxt()
@@ -154,6 +162,8 @@ int main(int argc, char **argv)
  
     //创建节点句柄
     ros::NodeHandle nh;
+
+	pub_cal_pos_res = nh.advertise<calculate_position_pkg::calculate_position_result>("chatter_calculate_position",10);
     
     //创建Subscribe，订阅名为chatter的话题，注册回调函数chatterCallBack
     ros::Subscriber sub = nh.subscribe("chatter_image_points", 100, CalculatePnp);
