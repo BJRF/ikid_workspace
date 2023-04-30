@@ -11,6 +11,9 @@ using namespace cv;
 
 ros::Publisher pub_cal_pos_res;
 
+char path1[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/distance_result_50_200";
+char path2[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_distance_result_50_200";
+
 // MyKalmanFilter kf;
 MyKalmanFilter *kf = new MyKalmanFilter();
 
@@ -103,8 +106,9 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 		//写入未处理的distance
 		FILE* fp = NULL;
 		char ch[200];
-		char filename[] = "/home/hjf/project/ikid_ws/result_data/distance_result/distance_result_100";
-		fp = fopen(filename, "a");
+		// char filename[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/distance_result_100";
+		// fp = fopen(filename, "a");
+		fp = fopen(path1, "a");
 		if(fp == NULL)
 		{
 			exit(0);
@@ -118,8 +122,9 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 		//写入卡尔曼滤波处理后的distance
 		FILE* fp = NULL;
 		char ch[200];
-		char filename[] = "/home/hjf/project/ikid_ws/result_data/distance_result/kf_distance_result_100";
-		fp = fopen(filename, "a");
+		// char filename[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_distance_result_100";
+		// fp = fopen(filename, "a");
+		fp = fopen(path2, "a");
 		if(fp == NULL)
 		{
 			exit(0);
@@ -135,11 +140,11 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 
 }
 
-void clearTxt()
+void cleartxt(char* str)
 {
 	FILE* fp;
 	char ch[200];
-	char filename[] = "/home/hjf/project/ikid_ws/tools/pnp_data";
+	char* filename = str;
 	fp = fopen(filename, "w");
 	if (fp == NULL)
 	{
@@ -151,8 +156,12 @@ void clearTxt()
 
 int main(int argc, char **argv)
 {
-
-	clearTxt();
+	char path[] = "/home/hjf/project/ikid_ws/tools/pnp_data";
+	cleartxt(path);
+	// char path2[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/distance_result_100";
+	cleartxt(path1);
+	// char path3[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_distance_result_100";
+	cleartxt(path2);
 
     //定义Person对象
     calculate_position_pkg::image_points p;
