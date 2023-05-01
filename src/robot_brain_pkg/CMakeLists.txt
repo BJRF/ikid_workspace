@@ -82,6 +82,7 @@ add_message_files(
   image_points.msg
   cmd_walk.msg
   calculate_position_result.msg
+  robot_head_pos.msg
 )
 
 generate_messages(

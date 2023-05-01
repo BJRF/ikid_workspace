@@ -17,28 +17,71 @@ char path2[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_
 // MyKalmanFilter kf;
 MyKalmanFilter *kf = new MyKalmanFilter();
 
-void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
-	//将接收的消息打印出来
-    ROS_INFO("收到坐标: [x1:%d, y1:%d, x2:%d, y2:%d, x3:%d, y3:%d, x4:%d, y4:%d, ]", 
-	msg->x1, msg->y1, msg->x2, msg->y2, msg->x3, msg->y3, msg->x4, msg->y4);
-	
-	vector<Point2d> image_points;
+/* 
+	reateBaseCalculatePositionMsg
+	根据订阅到的信息构造基础的CalculatePositionMsg
+*/
+void CreateBaseCalculatePositionMsg(calculate_position_pkg::calculate_position_result &cal_pos_res, const calculate_position_pkg::image_points::ConstPtr& msg) {
+	cal_pos_res.football_xyxy = msg->football_xyxy;
+	cal_pos_res.goal_xyxy = msg->goal_xyxy;
+	cal_pos_res.net_xyxy = msg->net_xyxy;
+	cal_pos_res.robot_xyxy = msg->robot_xyxy;
+	cal_pos_res.penalty_mark_xyxy = msg->penalty_mark_xyxy;
+	cal_pos_res.center_circle_xyxy = msg->center_circle_xyxy;
+}
 
-	image_points.push_back(Point2d(msg->x1, msg->y1));
-	image_points.push_back(Point2d(msg->x2, msg->y2));
-	image_points.push_back(Point2d(msg->x3, msg->y3));
-	image_points.push_back(Point2d(msg->x4, msg->y4));
+/* 
+	CalculatePnp
+	PNP计算
+	目前只计算球
+*/
+void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
+	// 限制
+	if(msg -> football_xyxy.size() == 0) {
+		cout << "这帧有其他信息但是没有球" << endl;
+		calculate_position_pkg::calculate_position_result cal_pos_res;
+		CreateBaseCalculatePositionMsg(cal_pos_res, msg);
+		pub_cal_pos_res.publish(cal_pos_res);
+		return;
+	}
+	//将接收的消息打印出来
+    // ROS_INFO("收到坐标: [x1:%d, y1:%d, x2:%d, y2:%d, x3:%d, y3:%d, x4:%d, y4:%d, ]", 
+	// msg->x1, msg->y1, msg->x2, msg->y2, msg->x3, msg->y3, msg->x4, msg->y4);
+	ROS_INFO("收到football坐标: [x1:%d, y1:%d, x2:%d, y2:%d]", 
+	msg->football_xyxy[0], msg->football_xyxy[1], msg->football_xyxy[2], msg->football_xyxy[3]);
+	
+	// 计算球点
+	int football_point1_x = msg->football_xyxy[0];
+	int football_point1_y = msg->football_xyxy[1];
+	int football_point2_x = msg->football_xyxy[2];
+	int football_point2_y = msg->football_xyxy[3];
+	int football_point3_x = football_point2_x;
+	int football_point3_y = football_point1_y;
+	int football_point4_x = football_point1_x + (football_point2_x - football_point1_x) / 2;
+	int football_point4_y = football_point1_y + (football_point2_y - football_point1_y) / 2;
+	cout << "x1:" << football_point1_x << " y1:" << football_point1_y << endl;
+	cout << "x2:" << football_point2_x << " y2:" << football_point2_y << endl;
+	cout << "x3:" << football_point3_x << " y3:" << football_point3_y << endl;
+	cout << "x4:" << football_point4_x << " y4:" << football_point4_y << endl;
+
+	// 构造image_point2d
+	vector<Point2d> image_points;
+	image_points.push_back(Point2d(football_point1_x, football_point1_y));
+	image_points.push_back(Point2d(football_point2_x, football_point2_y));
+	image_points.push_back(Point2d(football_point3_x, football_point3_y));
+	image_points.push_back(Point2d(football_point4_x, football_point4_y));
 
 	// 3D 特征点世界坐标，与像素坐标对应，单位是cm
+	// 构造image_point3d
+	// 注意世界坐标和像素坐标要一一对应
 	std::vector<Point3d> model_points;
 	model_points.push_back(Point3d(-7.5f, -7.5f, 0)); 
+	model_points.push_back(Point3d(+7.5f, +7.5f, 0));
 	model_points.push_back(Point3d(+7.5f, -7.5f, 0));
-	model_points.push_back(Point3d(-7.5f, +7.5f, 0));
 	// 原始点
 	// model_points.push_back(Point3d(+7.5, +7.5, 0));
 	//中心点
 	model_points.push_back(Point3d(0, 0, +7.5f));
-	//　注意世界坐标和像素坐标要一一对应
 
 	// // 相机内参矩阵和畸变系数均由相机标定结果得出
 	// // 相机内参矩阵
@@ -102,40 +145,40 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	float kf_distance = kf -> get_my_kalman_filter_result(distance);
 	cout << "distance: " << distance << endl;
 	cout << "kf_distance: " << kf_distance << endl;
-	{
-		//写入未处理的distance
-		FILE* fp = NULL;
-		char ch[200];
-		// char filename[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/distance_result_100";
-		// fp = fopen(filename, "a");
-		fp = fopen(path1, "a");
-		if(fp == NULL)
-		{
-			exit(0);
-		}
-		sprintf(ch, "%lf ", distance);
-		fputs(ch, fp);
-		fclose(fp);
-	}
+	// {
+	// 	//写入未处理的distance
+	// 	FILE* fp = NULL;
+	// 	char ch[200];
+	// 	// char filename[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/distance_result_100";
+	// 	// fp = fopen(filename, "a");
+	// 	fp = fopen(path1, "a");
+	// 	if(fp == NULL)
+	// 	{
+	// 		exit(0);
+	// 	}
+	// 	sprintf(ch, "%lf ", distance);
+	// 	fputs(ch, fp);
+	// 	fclose(fp);
+	// }
 
-	{
-		//写入卡尔曼滤波处理后的distance
-		FILE* fp = NULL;
-		char ch[200];
-		// char filename[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_distance_result_100";
-		// fp = fopen(filename, "a");
-		fp = fopen(path2, "a");
-		if(fp == NULL)
-		{
-			exit(0);
-		}
-		sprintf(ch, "%lf ", kf_distance);
-		fputs(ch, fp);
-		fclose(fp);
-	}
-
+	// {
+	// 	//写入卡尔曼滤波处理后的distance
+	// 	FILE* fp = NULL;
+	// 	char ch[200];
+	// 	// char filename[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_distance_result_100";
+	// 	// fp = fopen(filename, "a");
+	// 	fp = fopen(path2, "a");
+	// 	if(fp == NULL)
+	// 	{
+	// 		exit(0);
+	// 	}
+	// 	sprintf(ch, "%lf ", kf_distance);
+	// 	fputs(ch, fp);
+	// 	fclose(fp);
+	// }
+	// 构造发布msg
 	calculate_position_pkg::calculate_position_result cal_pos_res;
-	cal_pos_res.x1 = msg->x1;
+	CreateBaseCalculatePositionMsg(cal_pos_res, msg);
 	pub_cal_pos_res.publish(cal_pos_res);
 
 }
@@ -156,12 +199,12 @@ void cleartxt(char* str)
 
 int main(int argc, char **argv)
 {
-	char path[] = "/home/hjf/project/ikid_ws/tools/pnp_data";
-	cleartxt(path);
-	// char path2[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/distance_result_100";
-	cleartxt(path1);
-	// char path3[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_distance_result_100";
-	cleartxt(path2);
+	// char path[] = "/home/hjf/project/ikid_ws/tools/pnp_data";
+	// cleartxt(path);
+	// // char path2[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/distance_result_100";
+	// cleartxt(path1);
+	// // char path3[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_distance_result_100";
+	// cleartxt(path2);
 
     //定义Person对象
     calculate_position_pkg::image_points p;

@@ -161,6 +161,9 @@ def run(
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
+                # ros要发布的对象
+                im_p = image_points()
+                log_str = ""
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
@@ -175,50 +178,74 @@ def run(
                         annotator.box_label(xyxy, label, color=colors(c, True))
                     if save_crop:
                         save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
+                    class_index = cls  # 获取属性
+                    object_name = names[int(cls)] # 类名
+                    # 打印类
+                    # football 0
+                    # goal 1
+                    # net 2
+                    # robot 3
+                    # penalty_mark 4
+                    # center_circle 5
+                    print('class index is',class_index.item())#打印属性，由于我b们只有一个类，所以是0
+                    print('object_names is',object_name)#打印标签名字
+                    # 转int
+                    for i, v in enumerate(xyxy): xyxy[i] = int(v)
+                    # 填充发布类的
+                    if class_index == 0:
+                        im_p.football_xyxy = xyxy
+                        log_str += "football "
+                    elif class_index == 1:
+                        im_p.goal_xyxy = xyxy
+                        log_str += "goal "
+                    elif class_index == 2:
+                        im_p.net_xyxy = xyxy
+                        log_str += "net "
+                    elif class_index == 3:
+                        im_p.robot_xyxy = xyxy
+                        log_str += "robot "
+                    elif class_index == 4:
+                        im_p.penalty_mark_xyxy = xyxy
+                        log_str += "penalty_mark "
+                    elif class_index == 5:
+                        im_p.center_circle_xyxy = xyxy
+                        log_str += "center_circle "
 
                     # hjf:原始数据
-                    x1 = int(xyxy[0].item())
-                    y1 = int(xyxy[1].item())
-                    x2 = int(xyxy[2].item())
-                    y2 = int(xyxy[3].item())
+                    # x1 = int(xyxy[0].item())
+                    # y1 = int(xyxy[1].item())
+                    # x2 = int(xyxy[2].item())
+                    # y2 = int(xyxy[3].item())
 
                     # # 正方形数据
                     # x1 = int(xyxy[0].item())
                     # y1 = int(xyxy[1].item())
                     # x2 = int(xyxy[2].item())
                     # y2 = y1 + (x2 - x1)
-                    # class_index = cls  # 获取属性
-                    # object_name = names[int(cls)]
                     # print('bounding box is', x1, y1, x2, y2)  # 打印坐标
-                    xxxx1 = int((x1 + x2) / 2)
-                    yyyy1 = int((y1 + y2) / 2)
+                    # xxxx1 = int((x1 + x2) / 2)
+                    # yyyy1 = int((y1 + y2) / 2)
                     # print(label, '的预测中心点坐标：', '(', xxxx1, yyyy1, ')')  # 打印坐标
-                    # print('class index is',class_index.item())#打印属性，由于我b们只有一个类，所以是0
-                    # print('object_names is',object_name)#打印标签名字，
 
                     # print(f"xxxx1:{xxxx1}")
                     # print(f"yyyy1:{yyyy1}")
                     # print(f"xywh0:{xywh[0].item()}")
                     # print(f"xywh1:{xywh[1].item()}")
 
-                    #ROS发布
-                    #2.创建发布者对象
-                    pub = rospy.Publisher("chatter_image_points",image_points,queue_size=10)
-
                     #640*480下坐标
-                    im_p = image_points()
-                    im_p.x1 = x1
-                    im_p.y1 = y1
-                    im_p.x2 = x2
-                    im_p.y2 = y1
-                    im_p.x3 = x1
-                    im_p.y3 = y2
+                    # im_p = image_points()
+                    # im_p.x1 = x1
+                    # im_p.y1 = y1
+                    # im_p.x2 = x2
+                    # im_p.y2 = y1
+                    # im_p.x3 = x1
+                    # im_p.y3 = y2
                     # 第四个点为原始点
                     # im_p.x4 = x2
                     # im_p.y4 = y2
                     # 第四个点为中心点
-                    im_p.x4 = int(xxxx1)
-                    im_p.y4 = int(yyyy1)
+                    # im_p.x4 = int(xxxx1)
+                    # im_p.y4 = int(yyyy1)
 
                     # # 1920*1080下坐标
                     # im_p = image_points()
@@ -234,12 +261,15 @@ def run(
                     # print("x1:" + str(x1))
                     # print("impx1:" + str(im_p.x1))
 
-                    # rate = rospy.Rate(1)
-                    # while not rospy.is_shutdown():
-
-                    pub.publish(im_p)  #发布消息
-                    rospy.loginfo(f"发出坐标点x1:{im_p.x1} y1:{im_p.y1} x2:{im_p.x2} y2:{im_p.y2} x3:{im_p.x3} y3:{im_p.y3} x4:{im_p.x4} y1:{im_p.y4} ")
-
+                # 每帧图片发送一次
+                # rate = rospy.Rate(1)
+                # while not rospy.is_shutdown():
+                #ROS发布
+                #2.创建发布者对象
+                pub = rospy.Publisher("chatter_image_points",image_points,queue_size=10)
+                pub.publish(im_p)  #发布消息
+                # rospy.loginfo(f"发出坐标点x1:{im_p.x1} y1:{im_p.y1} x2:{im_p.x2} y2:{im_p.y2} x3:{im_p.x3} y3:{im_p.y3} x4:{im_p.x4} y1:{im_p.y4} ")
+                rospy.loginfo(f"本帧要发布的类有:{log_str} ")
             # Stream results
             im0 = annotator.result()
             if view_img:
@@ -247,29 +277,29 @@ def run(
                 cv2.waitKey(1)  # 1 millisecond
 
             # Save results (image with detections)
-            if save_img:
-                if dataset.mode == 'image':
-                    cv2.imwrite(save_path, im0)
-                else:  # 'video' or 'stream'
-                    if vid_path[i] != save_path:  # new video
-                        vid_path[i] = save_path
-                        if isinstance(vid_writer[i], cv2.VideoWriter):
-                            vid_writer[i].release()  # release previous video writer
-                        if vid_cap:  # video
-                            fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                            w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                            h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                            # 输出图像大小
-                            # print(f"cvw:{w}")
-                            # print(f"cvh:{h}")
-                        else:  # stream
-                            fps, w, h = 30, im0.shape[1], im0.shape[0]
-                            # 输出图像大小
-                            # print(f"w:{im0.shape[1]}")
-                            # print(f"h:{im0.shape[0]}")
-                        save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
-                        vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
-                    vid_writer[i].write(im0)
+            # if save_img:
+            #     if dataset.mode == 'image':
+            #         cv2.imwrite(save_path, im0)
+            #     else:  # 'video' or 'stream'
+            #         if vid_path[i] != save_path:  # new video
+            #             vid_path[i] = save_path
+            #             if isinstance(vid_writer[i], cv2.VideoWriter):
+            #                 vid_writer[i].release()  # release previous video writer
+            #             if vid_cap:  # video
+            #                 fps = vid_cap.get(cv2.CAP_PROP_FPS)
+            #                 w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            #                 h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            #                 # 输出图像大小
+            #                 # print(f"cvw:{w}")
+            #                 # print(f"cvh:{h}")
+            #             else:  # stream
+            #                 fps, w, h = 30, im0.shape[1], im0.shape[0]
+            #                 # 输出图像大小
+            #                 # print(f"w:{im0.shape[1]}")
+            #                 # print(f"h:{im0.shape[0]}")
+            #             save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
+            #             vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+            #         vid_writer[i].write(im0)
 
         # Print time (inference-only)
         LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
@@ -288,7 +318,7 @@ def parse_opt():
     parser = argparse.ArgumentParser()
     #hjf:parameter
     # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
-    parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'best_football_yolov5s_200.pt', help='model path(s)')
+    parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'ikid0426.pt', help='model path(s)')
     # parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--source', type=str, default='0', help='file/dir/URL/glob, 0 for webcam')
     # parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='(optional) dataset.yaml path')
