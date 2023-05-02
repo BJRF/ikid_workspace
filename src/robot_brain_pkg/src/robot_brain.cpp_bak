@@ -1,7 +1,7 @@
 #include <opencv2/opencv.hpp>
 #include <math.h>
 #include <ros/ros.h>
-#include "std_msgs/Int16.h"
+#include "std_msgs/Int64.h"
 #include "robot_brain_pkg/cmd_walk.h"
 #include "robot_brain_pkg/calculate_position_result.h"
 #include "robot_brain_pkg/robot_head_pos.h"
@@ -9,7 +9,7 @@
 
 // 状态机类
 StateMachine state_machine;
-extern ros::Publisher pub_head_control;
+
 // 声明
 // int get_decision(float distance);
 
@@ -59,30 +59,17 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     pub_walk = nh.advertise<robot_brain_pkg::cmd_walk>("/cmd_walk",10);
-    pub_spcial = nh.advertise<std_msgs::Int16>("/special_gait",10);
-    pub_head_control = nh.advertise<robot_brain_pkg::head_contol_by_brain>("/chatter_head_control",10);
+    pub_spcial = nh.advertise<std_msgs::Int64>("/special_gait",10);
+    pub_head_control = nh.advertise<robot_brain_pkg::robot_head_pos>("chatter_head_control",10);
     
     //创建Subscribe，订阅名为chatter的话题，注册回调函数chatterCallBack
     ros::Subscriber sub = nh.subscribe("chatter_calculate_position", 10, CollectEnvData);
 
     //初始化环境数据
     state_machine.cur_env_data = new EnvData();
-    ros::Duration(7).sleep();
     ros::Rate rate(30);
-
-    std::vector<std::vector<float>> angle_vec = {{0, 0},{-80, 0}, {-80, 45}, {0, 45}, {80, 45}, {80, 90}, {0, 90}, {-80, 90}, {0, 45}};
-
     //循环等待消息回调
     while(ros::ok()) {
-
-
-        for(int i = 0; i < angle_vec.size(); i++) {
-            state_machine.controlHead(angle_vec[i][0], angle_vec[i][1], true, false);
-            ros::Duration(0.5).sleep();
-        }
-        state_machine.kickFootball();
-
-
         rate.sleep();
         /* 
             CollectEnvData 得到环境信息

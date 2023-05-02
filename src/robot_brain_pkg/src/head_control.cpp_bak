@@ -1,0 +1,73 @@
+#include <opencv2/opencv.hpp>
+#include <math.h>
+#include <ros/ros.h>
+#include <math.h>
+#include "std_msgs/Int64.h"
+#include "robot_brain_pkg/cmd_walk.h"
+#include "robot_brain_pkg/calculate_position_result.h"
+#include "robot_brain_pkg/robot_head_pos.h"
+#include "robot_brain_pkg/head_contol_by_brain.h"
+
+#define PI acos(-1)
+
+ros::Publisher pub_head_pos;
+int head_state = 0;//0初始化， 1找球， 2跟球
+double neck_rotation_theta= 0; //颈旋转关节角度
+double neck_front_swing_theta = 0; // 颈前摆关节角度
+std::vector<std::vector<float>> angle_vec = {{0, 0},{-80, 0}, {-80, 45}, {0, 45}, {80, 45}, {80, 90}, {0, 90}, {-80, 90}, {0, 45}};
+int angle_vec_pos = 0;
+
+// 角度转弧度
+double angleToRadian(double angle) {
+    double radian = angle / 180 * PI;
+    return radian;
+}
+
+void headControl(const robot_brain_pkg::head_contol_by_brain::ConstPtr& head_contol_by_brain) {
+    // 如果是在找球状态
+    if(head_contol_by_brain -> is_find_state) {
+        // 如果上一帧本就是找球状态
+        if(head_state == 1) {
+            robot_brain_pkg::robot_head_pos head_pos;
+            double neck_rotation_theta_angle = 0;
+            double neck_front_swing_theta_angle = 0;
+            head_pos.neck_rotation_theta = angleToRadian(neck_rotation_theta_angle);
+            head_pos.neck_front_swing_theta = angleToRadian(neck_front_swing_theta_angle);
+            head_pos.neck_rotation_theta = angleToRadian(angle_vec[angle_vec_pos][0]);
+            head_pos.neck_front_swing_theta = angleToRadian(angle_vec[angle_vec_pos][1]);
+            pub_head_pos.publish(head_pos);
+            std::cout << "发送一次找球" << std::endl;
+            angle_vec_pos++;
+            // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }else if(head_state == 0) { // 如果上一帧是初始状态
+            angle_vec_pos = 1;
+            head_state = 1;
+        }else if(head_state == 2) { // 如果上一帧是跟球状态
+            head_state = 1;
+        }
+    }
+}
+
+int main(int argc, char **argv)
+{
+ 
+    //初始化ros节点
+    ros::init(argc, argv, "head_control");
+ 
+    //创建节点句柄
+    ros::NodeHandle nh;
+
+    pub_head_pos = nh.advertise<robot_brain_pkg::robot_head_pos>("/ikid_robot/robot_head_pos_msg",10);
+    
+    //创建Subscribe，订阅名为chatter的话题，注册回调函数chatterCallBack
+    ros::Subscriber sub = nh.subscribe("chatter_head_control", 1, headControl);
+
+    //循环等待消息回调
+    while(ros::ok()) {
+        ros::spinOnce();
+        ros::Duration(0.5).sleep();
+    }
+        
+    return 0;
+}
+

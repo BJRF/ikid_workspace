@@ -83,6 +83,7 @@ add_message_files(
   cmd_walk.msg
   calculate_position_result.msg
   robot_head_pos.msg
+  head_contol_by_brain.msg
 )
 
 generate_messages(
@@ -168,7 +169,17 @@ add_executable(robot_brain
   src/robot_brain.cpp
 )
 
+add_executable(head_control
+src/head_control.cpp
+)
+
 target_link_libraries(robot_brain
+  # kalman_filter_calculate_position_pkg
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+target_link_libraries(head_control
   # kalman_filter_calculate_position_pkg
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
