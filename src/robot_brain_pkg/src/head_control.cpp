@@ -11,11 +11,30 @@
 #define PI acos(-1)
 
 ros::Publisher pub_head_pos;
+
 int head_state = 0;//0初始化， 1找球， 2跟球
 double neck_rotation_theta= 0; //颈旋转关节角度
 double neck_front_swing_theta = 0; // 颈前摆关节角度
-std::vector<std::vector<float>> angle_vec = {{0, 0},{-80, 0}, {-80, 45}, {0, 45}, {80, 45}, {80, 90}, {0, 90}, {-80, 90}, {0, 45}};
+
+std::vector<std::vector<float>> angle_vec = {{10, 0},{-60, 0}, {-60, 35}, {10, 35}, {60, 35}, {60, 70}, {10, 70}, {-60, 70}, {10, 35}};
 int angle_vec_pos = 0;
+
+// 文件输入输出流
+std::fstream fout;
+
+const char head_pos_file_path[] = "/home/hjf/project/ikid_workspace/src/robot_brain_pkg/data/head_pos_angle.txt";
+
+// 写头部位置
+void writeHeadPos(double neck_rotation_theta_angle, double neck_front_swing_theta_angle) {
+    fout.open(head_pos_file_path, std::ios::out);
+    if(fout.fail()){
+        fout.open(head_pos_file_path, std::ios::app);
+        fout.close();
+        fout.open(head_pos_file_path, std::ios::out);
+    }
+    fout << neck_rotation_theta_angle << ' ' << neck_front_swing_theta_angle;
+    fout.close();
+}
 
 // 角度转弧度
 double angleToRadian(double angle) {
@@ -23,66 +42,51 @@ double angleToRadian(double angle) {
     return radian;
 }
 
-void headControl(const robot_brain_pkg::head_contol_by_brain::ConstPtr& head_contol_by_brain) {
+// 操作头部舵机(每次操作也要记录head_pos)
+void operateHead(double neck_rotation_theta_angle, double neck_front_swing_theta_angle) {
     robot_brain_pkg::robot_head_pos head_pos;
-    double neck_rotation_theta_angle = head_contol_by_brain -> neck_rotation_theta;
-    double neck_front_swing_theta_angle = head_contol_by_brain -> neck_front_swing_theta;
     head_pos.neck_rotation_theta = angleToRadian(neck_rotation_theta_angle);
     head_pos.neck_front_swing_theta = angleToRadian(neck_front_swing_theta_angle);
-    // head_pos.neck_rotation_theta = angleToRadian(angle_vec[angle_vec_pos][0]);
-    // head_pos.neck_front_swing_theta = angleToRadian(angle_vec[angle_vec_pos][1]);
     pub_head_pos.publish(head_pos);
-
-
-    return;
-    // std::cout << "push succ" << std::endl;
-    // robot_brain_pkg::robot_head_pos head_pos;
-    // double neck_rotation_theta_angle = 20;
-    // double neck_front_swing_theta_angle = 20;
-    // head_pos.neck_rotation_theta = angleToRadian(neck_rotation_theta_angle);
-    // head_pos.neck_front_swing_theta = angleToRadian(neck_front_swing_theta_angle);
-    // // head_pos.neck_rotation_theta = angleToRadian(angle_vec[angle_vec_pos][0]);
-    // // head_pos.neck_front_swing_theta = angleToRadian(angle_vec[angle_vec_pos][1]);
-    // pub_head_pos.publish(head_pos);
-    // std::cout << "发送一次找球" << std::endl;
-    // angle_vec_pos++;
-    // // 如果是在找球状态
-    // if(head_contol_by_brain -> is_find_state) {
-    //     // 如果上一帧本就是找球状态
-    //     if(head_state == 1) {
-    //         if(angle_vec_pos >= angle_vec.size()) angle_vec_pos = 0;
-    //         robot_brain_pkg::robot_head_pos head_pos;
-    //         double neck_rotation_theta_angle = 20;
-    //         double neck_front_swing_theta_angle = 20;
-    //         head_pos.neck_rotation_theta = angleToRadian(neck_rotation_theta_angle);
-    //         head_pos.neck_front_swing_theta = angleToRadian(neck_front_swing_theta_angle);
-    //         // head_pos.neck_rotation_theta = angleToRadian(angle_vec[angle_vec_pos][0]);
-    //         // head_pos.neck_front_swing_theta = angleToRadian(angle_vec[angle_vec_pos][1]);
-    //         pub_head_pos.publish(head_pos);
-    //         std::cout << "发送一次找球" << std::endl;
-    //         angle_vec_pos++;
-    //         // std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    //     }else if(head_state == 0) { // 如果上一帧是初始状态
-    //         angle_vec_pos = 1;
-    //         head_state = 1;
-    //         robot_brain_pkg::robot_head_pos head_pos;
-    //         double neck_rotation_theta_angle = 20;
-    //         double neck_front_swing_theta_angle = 20;
-    //         head_pos.neck_rotation_theta = angleToRadian(neck_rotation_theta_angle);
-    //         head_pos.neck_front_swing_theta = angleToRadian(neck_front_swing_theta_angle);
-    //         // head_pos.neck_rotation_theta = angleToRadian(angle_vec[angle_vec_pos][0]);
-    //         // head_pos.neck_front_swing_theta = angleToRadian(angle_vec[angle_vec_pos][1]);
-    //         pub_head_pos.publish(head_pos);
-    //         std::cout << "发送一次找球" << std::endl;
-    //         angle_vec_pos++;
-    //     }else if(head_state == 2) { // 如果上一帧是跟球状态
-    //         head_state = 1;
-    //     }
-    // }
+    //写入
+    writeHeadPos(neck_rotation_theta_angle, neck_front_swing_theta_angle);
 }
 
-void handleWalk(const robot_brain_pkg::cmd_walk::ConstPtr& cmdwalk) {
-    std::cout << "get walk succ" << std::endl;
+void headControl(const robot_brain_pkg::head_contol_by_brain::ConstPtr& head_contol_by_brain) {
+    // 先判断状态
+    // 如果要求是转动舵机
+    if(head_contol_by_brain ->is_find_state == false &&head_contol_by_brain ->is_follow_state == false) {
+        operateHead(head_contol_by_brain -> neck_rotation_theta, head_contol_by_brain -> neck_front_swing_theta);
+        return;
+    }
+    // 如果是找球
+    else if(head_contol_by_brain -> is_find_state == true) {
+        //第一次进入找球，angle_vec_pos从0开始
+        if(head_state == 0) {
+            //设置头部状态为找球
+            head_state = 1;
+            operateHead(angle_vec[angle_vec_pos][0], angle_vec[angle_vec_pos][1]);
+            angle_vec_pos++;
+            // 数组越界置零
+            if(angle_vec_pos == angle_vec.size()){
+                angle_vec_pos = 0;
+            }
+        }
+        //判断是否状态已经是找球了
+        else if(head_state == 1) {
+            operateHead(angle_vec[angle_vec_pos][0], angle_vec[angle_vec_pos][1]);
+            angle_vec_pos++;
+            // 数组越界置零
+            if(angle_vec_pos == angle_vec.size()){
+                angle_vec_pos = 0;
+            }
+        }  
+    }
+    // 如果是跟随
+    else if(head_contol_by_brain -> is_follow_state == true) {
+        angle_vec_pos = 0;
+        head_state = 2;
+    }
 }
 
 int main(int argc, char **argv)
@@ -99,13 +103,10 @@ int main(int argc, char **argv)
     //创建Subscribe，订阅名为chatter的话题，注册回调函数chatterCallBack
     ros::Subscriber sub = nh.subscribe("/chatter_head_control", 10, headControl);
 
-    // test
-    ros::Subscriber sub2 = nh.subscribe("/cmd_walk", 10, handleWalk);
-
+    // 半秒一回调
     ros::Rate rate(2);
     //循环等待消息回调
     while(ros::ok()) {
-        std::cout << "spinonce" << std::endl;
         ros::spinOnce();
         rate.sleep();
     }
