@@ -9,7 +9,7 @@ src
 src/calculate_position_pkg/src/calculate_position.cpp
 
 ## 2023.04.01 
-### vyolo+pnp
+### v1.0.2yolo+pnp
 src/calculate_position_pkg
 src/realtime_detect_pkg
 
@@ -31,3 +31,9 @@ src/robot_brain_pkg/src/state_machine.h
 
 ## 2023.05.03
 ### v.1.1.1代码整理优化，可读性增强，同时增加读写文件和一些下位机调用接口
+
+## 2023.05.05
+### v.1.2.0
+1. 头部独立为为一个新节点。
+2. 视觉包改为每帧一次逻辑。
+3. Brain整体基本流程整体逻辑优化。

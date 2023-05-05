@@ -1,4 +1,5 @@
 #!/home/hjf/anaconda3/envs/yolov5GPU/bin/python3.7
+# !/usr/bin/python3
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
 """
 Run inference on images, videos, directories, streams, etc.
@@ -152,6 +153,12 @@ def run(
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             imc = im0.copy() if save_crop else im0  # for save_crop
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+
+            # ros要发布的对象
+            im_p = image_points()
+            log_str = ""
+            rate = rospy.Rate(60)
+
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
@@ -161,9 +168,9 @@ def run(
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
-                # ros要发布的对象
-                im_p = image_points()
-                log_str = ""
+                # # ros要发布的对象
+                # im_p = image_points()
+                # log_str = ""
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
@@ -187,8 +194,8 @@ def run(
                     # robot 3
                     # penalty_mark 4
                     # center_circle 5
-                    print('class index is',class_index.item())#打印属性，由于我b们只有一个类，所以是0
-                    print('object_names is',object_name)#打印标签名字
+                    # print('class index is',class_index.item())#打印属性，由于我b们只有一个类，所以是0
+                    # print('object_names is',object_name)#打印标签名字
                     # 转int
                     for i, v in enumerate(xyxy): xyxy[i] = int(v)
                     # 填充发布类的
@@ -266,10 +273,17 @@ def run(
                 # while not rospy.is_shutdown():
                 #ROS发布
                 #2.创建发布者对象
-                pub = rospy.Publisher("chatter_image_points",image_points,queue_size=10)
-                pub.publish(im_p)  #发布消息
-                # rospy.loginfo(f"发出坐标点x1:{im_p.x1} y1:{im_p.y1} x2:{im_p.x2} y2:{im_p.y2} x3:{im_p.x3} y3:{im_p.y3} x4:{im_p.x4} y1:{im_p.y4} ")
-                rospy.loginfo(f"本帧要发布的类有:{log_str} ")
+                # pub = rospy.Publisher("chatter_image_points",image_points,queue_size=10)
+                # pub.publish(im_p)  #发布消息
+                # # rospy.loginfo(f"发出坐标点x1:{im_p.x1} y1:{im_p.y1} x2:{im_p.x2} y2:{im_p.y2} x3:{im_p.x3} y3:{im_p.y3} x4:{im_p.x4} y1:{im_p.y4} ")
+                # rospy.loginfo(f"本帧要发布的类有:{log_str} ")
+
+            pub = rospy.Publisher("chatter_image_points",image_points,queue_size=10)
+            pub.publish(im_p)  #发布消息
+            # rospy.loginfo(f"发出坐标点x1:{im_p.x1} y1:{im_p.y1} x2:{im_p.x2} y2:{im_p.y2} x3:{im_p.x3} y3:{im_p.y3} x4:{im_p.x4} y1:{im_p.y4} ")
+            rospy.loginfo(f"本帧要发布的类有:{log_str} ")
+            rate.sleep()
+            
             # Stream results
             im0 = annotator.result()
             if view_img:

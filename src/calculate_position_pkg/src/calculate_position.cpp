@@ -14,6 +14,9 @@ ros::Publisher pub_cal_pos_res;
 char path1[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/distance_result_50_200";
 char path2[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_distance_result_50_200";
 
+double pre_distance = 100;
+double pre_kf_distance = 100;
+
 // MyKalmanFilter kf;
 MyKalmanFilter *kf = new MyKalmanFilter();
 
@@ -38,9 +41,11 @@ void CreateBaseCalculatePositionMsg(calculate_position_pkg::calculate_position_r
 void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	// 限制
 	if(msg -> football_xyxy.size() == 0) {
-		cout << "这帧有其他信息但是没有球" << endl;
+		// cout << "这帧有其他信息但是没有球" << endl;
 		calculate_position_pkg::calculate_position_result cal_pos_res;
 		CreateBaseCalculatePositionMsg(cal_pos_res, msg);
+		cal_pos_res.distance = pre_distance;
+		cal_pos_res.kf_distance = pre_kf_distance;
 		pub_cal_pos_res.publish(cal_pos_res);
 		return;
 	}
@@ -59,10 +64,10 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	int football_point3_y = football_point1_y;
 	int football_point4_x = football_point1_x + (football_point2_x - football_point1_x) / 2;
 	int football_point4_y = football_point1_y + (football_point2_y - football_point1_y) / 2;
-	cout << "x1:" << football_point1_x << " y1:" << football_point1_y << endl;
-	cout << "x2:" << football_point2_x << " y2:" << football_point2_y << endl;
-	cout << "x3:" << football_point3_x << " y3:" << football_point3_y << endl;
-	cout << "x4:" << football_point4_x << " y4:" << football_point4_y << endl;
+	// cout << "x1:" << football_point1_x << " y1:" << football_point1_y << endl;
+	// cout << "x2:" << football_point2_x << " y2:" << football_point2_y << endl;
+	// cout << "x3:" << football_point3_x << " y3:" << football_point3_y << endl;
+	// cout << "x4:" << football_point4_x << " y4:" << football_point4_y << endl;
 
 	// 构造image_point2d
 	vector<Point2d> image_points;
@@ -110,7 +115,7 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 
 	// Epnp求解
 	solvePnP(model_points, image_points, camera_matrix, dist_coeffs, \
-		rotation_vector, translation_vector, 0, CV_EPNP);
+		rotation_vector, translation_vector, 0, 1);
 	// 默认CV_ITERATIVE方法，可尝试修改为EPNP（CV_EPNP）,P3P（CV_P3P）
 
 	// cout << "Rotation Vector " << endl << rotation_vector << endl << endl;
@@ -137,7 +142,7 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	
 	// Z轴
 	float distance = P_oc.at<float>(2,0);
-	cout << "P_oc" << endl << P_oc << endl;
+	// cout << "P_oc" << endl << P_oc << endl;
 	
 	//人工滤波
 	// if(distance < 0 || distance > 500) return;
@@ -145,6 +150,10 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	float kf_distance = kf -> get_my_kalman_filter_result(distance);
 	cout << "distance: " << distance << endl;
 	cout << "kf_distance: " << kf_distance << endl;
+
+	pre_distance = distance;
+	pre_kf_distance = kf_distance;
+
 	// {
 	// 	//写入未处理的distance
 	// 	FILE* fp = NULL;
@@ -178,7 +187,10 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	// }
 	// 构造发布msg
 	calculate_position_pkg::calculate_position_result cal_pos_res;
+	cal_pos_res.distance = distance;
+	cal_pos_res.kf_distance = kf_distance;
 	CreateBaseCalculatePositionMsg(cal_pos_res, msg);
+	// std::cout << cal_pos_res << std::endl;
 	pub_cal_pos_res.publish(cal_pos_res);
 
 }
