@@ -651,11 +651,11 @@ public:
                     std_msgs::Int16 msg;
                     msg.data = 0;//左
                     pub_parallelMove.publish(msg);
-                    cout << "向左平移三步" << endl;
+                    std::cout << "向左平移三步" << std::endl;
                     ros::Duration(2.5).sleep();
                     //向右转圈
                     runWalk(0, default_walk_width, false, false, angleToRadian(-30));
-                    cout << "向右转30度" << endl;
+                    std::cout << "向右转30度" << std::endl;
                     return State::FindNet;
                 }else {
                     //将看球的头部还原归位
