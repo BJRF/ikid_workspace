@@ -33,6 +33,25 @@ void CreateBaseCalculatePositionMsg(calculate_position_pkg::calculate_position_r
 	cal_pos_res.center_circle_xyxy = msg->center_circle_xyxy;
 }
 
+
+//构造2d点------image_points
+//构造3d点------model_points
+vector<vector<int>> 3d_points;
+vector<vector<int>> 2d_points;
+
+void creat_2d3d_points() {
+	vector<Point2d> image_points;
+	vector<Point3d> model_points;
+
+	image_points.push_back(Point2d(football_point3_x, football_point3_y));
+	image_points.push_back(Point2d(football_point4_x, football_point4_y));
+
+
+	std::vector<Point3d> model_points;
+	model_points.push_back(Point3d(-7.5f, -7.5f, 0)); 
+}
+
+
 /* 
 	CalculatePnp
 	PNP计算
