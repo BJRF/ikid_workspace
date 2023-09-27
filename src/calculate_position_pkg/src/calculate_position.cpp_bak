@@ -1,3 +1,4 @@
+//辅助定位前的代码备份
 #include <opencv2/opencv.hpp>
 #include <math.h>
 #include <ros/ros.h>
@@ -5,29 +6,20 @@
 #include "calculate_position_pkg/image_points.h"
 #include "calculate_position_pkg/calculate_position_result.h"
 #include "calculate_position/kalman_filter.h"
-#include "calculate_position/helper.h"
 
 using namespace std;
 using namespace cv;
 
 ros::Publisher pub_cal_pos_res;
 
-//PNP实验IO文件
 char path1[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/distance_result_50_200";
 char path2[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_distance_result_50_200";
 
-//卡尔曼滤波初值
 double pre_distance = 100;
 double pre_kf_distance = 100;
 
 // MyKalmanFilter kf;
 MyKalmanFilter *kf = new MyKalmanFilter();
-
-//helper UDP相关
-const char* serverIP = "192.168.1.247";
-int serverPort = 12345;
-// 在helper启动UDP发送器
-UDPSender sender(serverIP, serverPort);
 
 /* 
 	reateBaseCalculatePositionMsg
@@ -40,69 +32,6 @@ void CreateBaseCalculatePositionMsg(calculate_position_pkg::calculate_position_r
 	cal_pos_res.robot_xyxy = msg->robot_xyxy;
 	cal_pos_res.penalty_mark_xyxy = msg->penalty_mark_xyxy;
 	cal_pos_res.center_circle_xyxy = msg->center_circle_xyxy;
-}
-
-// 构造辅助请求包
-void createUdpDate(UdpData& data ,calculate_position_pkg::calculate_position_result cal_pos_res) {
-	if(cal_pos_res.football_xyxy.size() == 0) {
-		for(int i = 0; i < 4; i++) {
-			data.football_xyxy[i] = 0;
-		}
-	}else {
-		for(int i = 0; i < cal_pos_res.football_xyxy.size(); i++) {
-			data.football_xyxy[i] = cal_pos_res.football_xyxy[i];
-		}
-	}
-
-	if(cal_pos_res.goal_xyxy.size() == 0) {
-		for(int i = 0; i < 4; i++) {
-			data.goal_xyxy[i] = 0;
-		}
-	}else {
-		for(int i = 0; i < cal_pos_res.goal_xyxy.size(); i++) {
-			data.goal_xyxy[i] = cal_pos_res.goal_xyxy[i];
-		}
-	}
-
-	if(cal_pos_res.net_xyxy.size() == 0) {
-		for(int i = 0; i < 4; i++) {
-			data.net_xyxy[i] = 0;
-		}
-	}else {
-		for(int i = 0; i < cal_pos_res.net_xyxy.size(); i++) {
-			data.net_xyxy[i] = cal_pos_res.net_xyxy[i];
-		}
-	}
-
-	if(cal_pos_res.robot_xyxy.size() == 0) {
-		for(int i = 0; i < 4; i++) {
-			data.robot_xyxy[i] = 0;
-		}
-	}else {
-		for(int i = 0; i < cal_pos_res.robot_xyxy.size(); i++) {
-			data.robot_xyxy[i] = cal_pos_res.robot_xyxy[i];
-		}
-	}
-
-	if(cal_pos_res.penalty_mark_xyxy.size() == 0) {
-		for(int i = 0; i < 4; i++) {
-			data.penalty_mark_xyxy[i] = 0;
-		}
-	}else {
-		for(int i = 0; i < cal_pos_res.penalty_mark_xyxy.size(); i++) {
-			data.penalty_mark_xyxy[i] = cal_pos_res.penalty_mark_xyxy[i];
-		}
-	}
-	
-	if(cal_pos_res.center_circle_xyxy.size() == 0) {
-		for(int i = 0; i < 4; i++) {
-			data.center_circle_xyxy[i] = 0;
-		}
-	}else {
-		for(int i = 0; i < cal_pos_res.center_circle_xyxy.size(); i++) {
-			data.center_circle_xyxy[i] = cal_pos_res.center_circle_xyxy[i];
-		}
-	}
 }
 
 /* 
@@ -122,6 +51,8 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 		return;
 	}
 	//将接收的消息打印出来
+    // ROS_INFO("收到坐标: [x1:%d, y1:%d, x2:%d, y2:%d, x3:%d, y3:%d, x4:%d, y4:%d, ]", 
+	// msg->x1, msg->y1, msg->x2, msg->y2, msg->x3, msg->y3, msg->x4, msg->y4);
 	ROS_INFO("收到football坐标: [x1:%d, y1:%d, x2:%d, y2:%d]", 
 	msg->football_xyxy[0], msg->football_xyxy[1], msg->football_xyxy[2], msg->football_xyxy[3]);
 	
@@ -134,6 +65,10 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	int football_point3_y = football_point1_y;
 	int football_point4_x = football_point1_x + (football_point2_x - football_point1_x) / 2;
 	int football_point4_y = football_point1_y + (football_point2_y - football_point1_y) / 2;
+	// cout << "x1:" << football_point1_x << " y1:" << football_point1_y << endl;
+	// cout << "x2:" << football_point2_x << " y2:" << football_point2_y << endl;
+	// cout << "x3:" << football_point3_x << " y3:" << football_point3_y << endl;
+	// cout << "x4:" << football_point4_x << " y4:" << football_point4_y << endl;
 
 	// 构造image_point2d
 	vector<Point2d> image_points;
@@ -168,6 +103,8 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
     Mat dist_coeffs = (Mat_<float>(5, 1) << -0.5885200737681696, 0.6747491058456546, 0.006768694852797847, 
         0.02067272313155804, -0.3616453058722507);
 
+
+	// cout << "Camera Matrix " << endl << camera_matrix << endl << endl;
 	// 旋转向量
 	Mat rotation_vector;
 	// 平移向量
@@ -178,9 +115,12 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	// 	rotation_vector, translation_vector, 0, CV_ITERATIVE);
 
 	// Epnp求解
-	// 默认CV_ITERATIVE方法，可尝试修改为EPNP（CV_EPNP）,P3P（CV_P3P）
 	solvePnP(model_points, image_points, camera_matrix, dist_coeffs, \
 		rotation_vector, translation_vector, 0, 1);
+	// 默认CV_ITERATIVE方法，可尝试修改为EPNP（CV_EPNP）,P3P（CV_P3P）
+
+	// cout << "Rotation Vector " << endl << rotation_vector << endl << endl;
+	// cout << "Translation Vector" << endl << translation_vector << endl << endl;
 
 	Mat Rvec;
 	Mat_<float> Tvec;
@@ -254,21 +194,8 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	// std::cout << cal_pos_res << std::endl;
 	pub_cal_pos_res.publish(cal_pos_res);
 	
-	// 辅助定位相关
-	// 构造数据
-	UdpData data;
-	createUdpDate(data, cal_pos_res);
-	// data.football_xyxy = cal_pos_res.football_xyxy;
-	// data.goal_xyxy = cal_pos_res.goal_xyxy;
-	// data.net_xyxy = cal_pos_res.net_xyxy;
-	// data.robot_xyxy = cal_pos_res.robot_xyxy;
-	// data.penalty_mark_xyxy = cal_pos_res.penalty_mark_xyxy;
-	// data.distance = cal_pos_res.distance;
-	// data.kf_distance = cal_pos_res.kf_distance;
-	// data.robot_distance = 0;
-	// udp发送数据给worker
-	sender.SendData(data);
-	std::cout << "Sent data UdpData: UdpData.distance = " << data.distance << std::endl;
+	//辅助定位相关
+	//udp发生数据给worker
 }
 
 void cleartxt(char* str)

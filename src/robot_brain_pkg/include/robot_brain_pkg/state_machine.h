@@ -18,7 +18,7 @@
 #define FIND_FOOTBALL_STATE_FRAME_INTERVAL 8
 #define FOUND_FOOTBALL_TRIGGER 6
 #define LOST_FOOTBALL_TRIGGER 30
-#define KICK_FOOTBALL_DISTANCE_TRIGGER 35
+#define KICK_FOOTBALL_DISTANCE_TRIGGER 30
 #define FOLLOW_FPOINT_EDGE_LEFT 300
 #define FOLLOW_FPOINT_EDGE_RIGHT 320
 #define FOLLOW_FPOINT_EDGE_UP 220
@@ -29,6 +29,7 @@
 #define MAX_WALK_ROTATION_ANGLE 15
 #define RIGHT_KICKBALL 3
 #define LEFT_KICKBALL 4
+#define NO_ADJUST_BODY_DISTANCE 33
 
 // 全局变量
 // ros 发布
@@ -490,23 +491,26 @@ public:
                 //     adjHeadFollowFootBall(cur_env_data->football_xyxy);
                 // }
 
-                // 踢球前的身体角度判断
-                //如果摄像头偏了，給2s调整身体
-                if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE || 
-                cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < -FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE) {
-                    confirming_kick = false;
-                    // 摄像头x轴如果是-,说明物体在右，则身体要往右，也就是walk偏转角度要为负
-                    if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > MAX_WALK_ROTATION_ANGLE) {
-                        runWalk(0, default_walk_width, false, false, angleToRadian(MAX_WALK_ROTATION_ANGLE));
-                    }else {
-                        runWalk(0, default_walk_width, false, false, angleToRadian(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle));
+                //如果球很远，才要调整身体位置，否则直接踢球NO_ADJUST_BODY_DISTANCE
+                if(abs(cur_env_data -> kf_distance) >= NO_ADJUST_BODY_DISTANCE && cur_env_data -> distance != 0) {
+                    // 踢球和行走中的身体角度判断
+                    // 如果摄像头偏了，給2s调整身体
+                    if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE || 
+                    cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < -FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE) {
+                        confirming_kick = false;
+                        // 摄像头x轴如果是-,说明物体在右，则身体要往右，也就是walk偏转角度要为负
+                        if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > MAX_WALK_ROTATION_ANGLE) {
+                            runWalk(0, default_walk_width, false, false, angleToRadian(MAX_WALK_ROTATION_ANGLE));
+                        }else {
+                            runWalk(0, default_walk_width, false, false, angleToRadian(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle));
+                        }
+                        // 摄像头的x轴调整到0
+                        controlHead(0, cur_env_data->robot_head_pos_angle.neck_front_swing_theta_angle, false, false);
+                        std::cout << "[" << frame << "]头偏过大，暂停调整身体;distance:" << abs(cur_env_data -> kf_distance) << std::endl;
+                        //暂停60帧给下位机移动身体和头部的时间
+                        pauseNFrame(60);
+                        return State::FollowObject;
                     }
-                    // 摄像头的x轴调整到0
-                    controlHead(0, cur_env_data->robot_head_pos_angle.neck_front_swing_theta_angle, false, false);
-                    std::cout << "[" << frame << "]头偏过大，暂停调整身体" << std::endl;
-                    //暂停60帧给下位机移动身体和头部的时间
-                    pauseNFrame(60);
-                    return State::FollowObject;
                 }
 
 
@@ -656,11 +660,13 @@ public:
                     //向右转圈
                     runWalk(0, default_walk_width, false, false, angleToRadian(-30));
                     std::cout << "向右转30度" << std::endl;
+                    pauseNFrame(60);
                     return State::FindNet;
                 }else {
                     //将看球的头部还原归位
                     controlHead(temp_neck_rotation_theta_angle, temp_neck_front_swing_theta_angle, false, false);
                     std::cout << "[" << frame << "]found net" << std::endl;
+                    pauseNFrame(15);
                     return State::FollowObject;
                 }
 

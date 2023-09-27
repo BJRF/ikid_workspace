@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(calculate_position_pkg)
+project(worker_brain_pkg)
 
 set(OpenCV_DIR /home/nvidia/opencv_build/opencv-4.5.1/)
-
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -78,6 +77,20 @@ find_package(catkin REQUIRED COMPONENTS
 #   std_msgs
 # )
 
+add_message_files(
+  FILES
+  robot_head_pos.msg
+  cmd_walk.msg
+  image_points.msg
+  calculate_position_result.msg
+  head_contol_by_brain.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
 ################################################
@@ -98,17 +111,6 @@ find_package(catkin REQUIRED COMPONENTS
 #   cfg/DynReconf2.cfg
 # )
 
-add_message_files(
-  FILES
-  image_points.msg
-  calculate_position_result.msg
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
-
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -120,10 +122,9 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES calculate_position
+#  LIBRARIES worker_brain_pkg
 #  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
-  CATKIN_DEPENDS roscpp rospy std_msgs  message_runtime
 )
 
 ###########
@@ -140,7 +141,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/calculate_position.cpp
+#   src/${PROJECT_NAME}/worker_brain_pkg.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -151,22 +152,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/calculate_position_node.cpp)
-
-add_library(kalman_filter_calculate_position_pkg include/calculate_position/kalman_filter.h src/source/kalman_filter.cpp)
-add_dependencies(kalman_filter_calculate_position_pkg ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(kalman_filter_calculate_position_pkg ${catkin_LIBRARIES} )
-
-add_executable(calculate_position
-  src/calculate_position.cpp
-)
-
-target_link_libraries(calculate_position
-  kalman_filter_calculate_position_pkg
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-
+# add_executable(${PROJECT_NAME}_node src/worker_brain_pkg_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -182,6 +168,26 @@ target_link_libraries(calculate_position
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+
+add_executable(worker_brain
+  src/robot_brain.cpp
+)
+
+add_executable(worker_head_control
+  src/head_control.cpp
+)
+
+target_link_libraries(worker_brain
+  # kalman_filter_calculate_position_pkg
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+target_link_libraries(worker_head_control
+  # kalman_filter_calculate_position_pkg
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
 
 #############
 ## Install ##
@@ -230,7 +236,7 @@ target_link_libraries(calculate_position
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_calculate_position.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_worker_brain_pkg.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
