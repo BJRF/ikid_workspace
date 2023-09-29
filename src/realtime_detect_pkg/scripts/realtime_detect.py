@@ -1,5 +1,4 @@
-#!/home/hjf/anaconda3/envs/yolov5GPU/bin/python3.7
-# !/usr/bin/python3
+#!/usr/bin/python3
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
 """
 Run inference on images, videos, directories, streams, etc.
@@ -333,6 +332,7 @@ def parse_opt():
     #hjf:parameter
     # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'ikid0426.pt', help='model path(s)')
+    # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'best.pt', help='model path(s)')
     # parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--source', type=str, default='0', help='file/dir/URL/glob, 0 for webcam')
     # parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='(optional) dataset.yaml path')

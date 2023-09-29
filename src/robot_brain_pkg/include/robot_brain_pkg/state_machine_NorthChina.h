@@ -16,7 +16,6 @@
 #define FIND_FOOTBALL_STATE_FRAME_INTERVAL 8
 #define FOUND_FOOTBALL_TRIGGER 6
 #define LOST_FOOTBALL_TRIGGER 30
-#define KICK_FOOTBALL_DISTANCE_TRIGGER 28
 #define FOLLOW_FPOINT_EDGE_LEFT 300
 #define FOLLOW_FPOINT_EDGE_RIGHT 320
 #define FOLLOW_FPOINT_EDGE_UP 220
@@ -28,6 +27,9 @@
 #define RIGHT_KICKBALL 3
 #define LEFT_KICKBALL 4
 #define NO_ADJUST_BODY_DISTANCE 33
+// #define KICK_FOOTBALL_DISTANCE_TRIGGER 30
+
+float KICK_FOOTBALL_DISTANCE_TRIGGER;
 
 // 全局变量
 // ros 发布
@@ -192,6 +194,7 @@ public:
         // 下位机给的参数服务器的默认歩长歩宽，读取一次就行（构造函数问题，下面有重复调用）
         ros::param::get("/pid_amend/walk_length", this -> default_walk_length);
         ros::param::get("/pid_amend/walk_width", this -> default_walk_width);
+        readConfig();
     }
 
     // 更新环境信息(walk没有更新)
@@ -222,6 +225,15 @@ public:
         cur_env_data -> kf_distance = position_res -> kf_distance;
         // 更新头部舵机信息
         cur_env_data->robot_head_pos_angle = readHeadPos();
+    }
+
+    // 读取配置文件
+    void readConfig() {
+        const char kick_football_distance_trigger_file_path[] = "/home/nvidia/ikid_ws/src/robot_brain_pkg/data/kick_football_distance_trigger.txt";
+        fin.open(kick_football_distance_trigger_file_path, std::ios::in);
+        fin >> KICK_FOOTBALL_DISTANCE_TRIGGER;
+        fin.close();
+        std::cout << "读取到配置文件KICK_FOOTBALL_DISTANCE_TRIGGER:" << KICK_FOOTBALL_DISTANCE_TRIGGER << std::endl;
     }
 
     // 获取当前状态

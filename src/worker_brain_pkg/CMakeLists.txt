@@ -170,11 +170,15 @@ include_directories(
 # )
 
 add_executable(worker_brain
-  src/robot_brain.cpp
+  src/worker_brain.cpp
 )
 
 add_executable(worker_head_control
   src/head_control.cpp
+)
+
+add_executable(helper_brain
+  src/helper_brain.cpp
 )
 
 target_link_libraries(worker_brain
@@ -184,6 +188,12 @@ target_link_libraries(worker_brain
 )
 
 target_link_libraries(worker_head_control
+  # kalman_filter_calculate_position_pkg
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+target_link_libraries(helper_brain
   # kalman_filter_calculate_position_pkg
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}

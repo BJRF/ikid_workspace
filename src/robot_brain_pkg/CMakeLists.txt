@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(robot_brain_pkg)
 
-set(OpenCV_DIR /usr/local/share/OpenCV)
+set(OpenCV_DIR /home/nvidia/opencv_build/opencv-4.5.1/)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -79,11 +79,11 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_message_files(
   FILES
-  image_points.msg
-  cmd_walk.msg
-  calculate_position_result.msg
   robot_head_pos.msg
+  image_points.msg
+  calculate_position_result.msg
   head_contol_by_brain.msg
+  cmd_walk.msg
 )
 
 generate_messages(

@@ -5,7 +5,7 @@
 #include "worker_brain_pkg/cmd_walk.h"
 #include "worker_brain_pkg/calculate_position_result.h"
 #include "worker_brain_pkg/robot_head_pos.h"
-#include "worker_brain_pkg/state_machine.h"
+#include "worker_brain_pkg/worker_state_machine.h"
 // #include "worker_brain_pkg/worker.h"
 //udp
 #include <iostream>
@@ -18,7 +18,7 @@
 
 
 // 状态机类
-StateMachine state_machine;
+WorkerStateMachine state_machine;
 
 extern ros::Publisher pub_head_control;
 

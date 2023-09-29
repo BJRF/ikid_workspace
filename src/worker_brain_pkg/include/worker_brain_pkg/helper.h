@@ -25,6 +25,7 @@ struct UdpData {
     float distance; //原始PNP计算距离
     float kf_distance; //卡尔曼滤波后的计算距离
     float robot_distance; //机器人距离
+    double neck_rotation_theta_angle;// 颈部旋转关节
 };
 
 class UDPSender {

@@ -24,7 +24,7 @@ int angle_vec_pos = 0;
 // 文件输入输出流
 std::fstream fout;
 
-const char head_pos_file_path[] = "/home/nvidia/ikid_ws/src/robot_brain_pkg/data/head_pos_angle.txt";
+const char head_pos_file_path[] = "/home/nvidia/ikid_ws/src/worker_brain_pkg/data/head_pos_angle.txt";
 
 // 写头部位置
 void writeHeadPos(double neck_rotation_theta_angle, double neck_front_swing_theta_angle) {

@@ -2,5 +2,7 @@ build
 devel
 result_data
 src/realtime_detect_pkg/scripts/runs
+src/realtime_detect_pkg/scripts/utils
 .catkin_workspace
 .vscode/brow*
+src/realtime_detect_pkg/scripts/*.pt
