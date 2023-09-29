@@ -12,7 +12,7 @@
 
 #define PI acos(-1)
 
-ros::Publisher pub_head_pos;
+ros::Publisher pub_head_pos;help
 
 int head_state = 0;//0初始化， 1找球， 2跟球
 double neck_rotation_theta= 0; //颈旋转关节角度

@@ -73,9 +73,10 @@ int main(int argc, char **argv)
         // std::cout << "test" << std::endl;
         // 接收来自helper的数据
         receiver.ReceiveData(data);
+        state_machine.execute_action_by_cur_data(data);
         // std::cout << "Received data: distance=" << data.distance << std::endl;
         // state_machine.execute_action_by_cur_data(data);
-        CollectEnvData(data);
+        // CollectEnvData(data);
         // std::this_thread::sleep_for(std::chrono::seconds(1));
         // std::cout << "------1" << std::endl;
     }
