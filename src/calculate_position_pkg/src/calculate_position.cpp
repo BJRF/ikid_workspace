@@ -20,6 +20,9 @@ char path2[] = "/home/hjf/project/ikid_workspace/result_data/distance_result/kf_
 double pre_distance = 100;
 double pre_kf_distance = 100;
 
+// 平均值队列
+vector<float> pre_distance_vec;
+
 // MyKalmanFilter kf;
 MyKalmanFilter *kf = new MyKalmanFilter();
 
@@ -105,6 +108,14 @@ void createUdpDate(UdpData& data ,calculate_position_pkg::calculate_position_res
 	}
 }
 
+float calAverage(vector<float> vec) {
+	float sum = 0;
+	for(auto val : vec) {
+		sum += val;
+	}
+	return sum/vec.size();
+}
+
 // 求目标距离的函数
 float cal_distance(std::vector<Point2d> image_points, std::vector<Point3d> model_points) {
 	/*
@@ -140,7 +151,7 @@ float cal_distance(std::vector<Point2d> image_points, std::vector<Point3d> model
 
 	// Epnp求解
 	// 默认CV_ITERATIVE方法，可尝试修改为EPNP（CV_EPNP）,P3P（CV_P3P）
-	solvePnP(model_points, image_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector, 0, 1);
+	solvePnP(model_points, image_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector, 0, SOLVEPNP_EPNP);
 
 	Mat Rvec;
 	Mat_<float> Tvec;
@@ -186,10 +197,11 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 		pub_cal_pos_res.publish(cal_pos_res);
 		return;
 	}
-	// 将接收的消息打印出来
-	// ROS_INFO("收到football坐标: [x1:%d, y1:%d, x2:%d, y2:%d]", 
-	// msg->football_xyxy[0], msg->football_xyxy[1], msg->football_xyxy[2], msg->football_xyxy[3]);
-	
+
+	/*
+		构造球的2d和3d点
+	*/
+
 	// 计算球点
 	int football_point1_x = msg->football_xyxy[0];
 	int football_point1_y = msg->football_xyxy[1];
@@ -199,100 +211,168 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	int football_point3_y = football_point1_y;
 	int football_point4_x = football_point1_x + (football_point2_x - football_point1_x) / 2;
 	int football_point4_y = football_point1_y + (football_point2_y - football_point1_y) / 2;
+	int football_point5_x = msg->football_xyxy[0] + (msg->football_xyxy[2]-msg->football_xyxy[0])/4;
+	int football_point5_y = football_point4_y;
+	int football_point6_x = football_point4_x;
+	int football_point6_y = football_point1_y + (football_point2_y - football_point1_y) *7/8;
+	// int football_point7_x = football_point5_x;
+	// int football_point7_y = football_point1_y - (football_point2_y - football_point1_y) / 4;
+	// int football_point8_x = football_point4_x;
+	// int football_point8_y = football_point7_y;
+	// int football_point9_x = football_point2_x / 2;
+	// int football_point9_y = football_point1_y / 2;
+	// int football_point10_x= football_point2_x / 2;
+	// int football_point10_y= football_point4_y;
+	// int football_point11_x= football_point2_x / 2;
+	// int football_point11_y= football_point2_y - (football_point2_y - football_point1_y) / 4;
+	// int football_point12_x= football_point4_x;
+	// int football_point12_y= football_point2_y / 2;
+	// int football_point13_x= football_point2_x / 2;
+	// int football_point13_y= football_point11_y;
 
-	/*
-		构造球的2d和3d点
-	*/
 	// 构造image_point2d
 	vector<Point2d> image_points;
 	image_points.push_back(Point2d(football_point1_x, football_point1_y));
 	image_points.push_back(Point2d(football_point2_x, football_point2_y));
 	image_points.push_back(Point2d(football_point3_x, football_point3_y));
 	image_points.push_back(Point2d(football_point4_x, football_point4_y));
-
-	// 3D 特征点世界坐标，与像素坐标对应，单位是cm
+	image_points.push_back(Point2d(football_point5_x, football_point5_y));
+	image_points.push_back(Point2d(football_point6_x, football_point6_y));
+	// image_points.push_back(Point2d(football_point7_x, football_point7_y));
+	// image_points.push_back(Point2d(football_point8_x, football_point8_y));
+	// image_points.push_back(Point2d(football_point9_x, football_point9_y));
+	// image_points.push_back(Point2d(football_point10_x, football_point10_y));
+	// image_points.push_back(Point2d(football_point11_x, football_point11_y));
+	// image_points.push_back(Point2d(football_point12_x, football_point12_y));
+	// image_points.push_back(Point2d(football_point13_x, football_point13_y));
+	
 	// 构造image_point3d
-	// 注意世界坐标和像素坐标要一一对应
 	std::vector<Point3d> model_points;
-	model_points.push_back(Point3d(-7.5f, -7.5f, 0)); 
-	model_points.push_back(Point3d(+7.5f, +7.5f, 0));
-	model_points.push_back(Point3d(+7.5f, -7.5f, 0));
-	// 原始点
-	// model_points.push_back(Point3d(+7.5, +7.5, 0));
-	//中心点
-	model_points.push_back(Point3d(0, 0, +7.5f));
+	model_points.push_back(Point3d(-6.95f, +6.95f, 0)); 
+	model_points.push_back(Point3d(+6.95f, -6.95f, 0));
+	model_points.push_back(Point3d(+6.95f, +6.95f, 0));
+	model_points.push_back(Point3d(0, 0, +6.95f));
+	model_points.push_back(Point3d(-3.4750f, 0, +6.018877f));
+	model_points.push_back(Point3d(0, +5.2125f, +4.596993f));
+	// model_points.push_back(Point3d(-3.475f, +3.475f, +4.914392f));
+	// model_points.push_back(Point3d(0, +3.475f, +6.018877f));
+	// model_points.push_back(Point3d(+3.475f, +3.475f, +4.914392f));
+	// model_points.push_back(Point3d(+3.475f, 0, +6.018877f));
+	// model_points.push_back(Point3d(+3.475f, -3.475f, +4.914392f));
+	// model_points.push_back(Point3d(0, -3.475f, +4.914392f));
+	// model_points.push_back(Point3d(-3.475f, -3.475f, +4.914392f));
+	//计算距离
+	float distance = cal_distance(image_points, model_points);
 
-	/*
-		构造相机参数
-	*/
+	// 华北五省球Points构造
+	// std::vector<Point3d> china_north_model_points;
+	// china_north_model_points.push_back(Point3d(-7.5f, -7.5f, 0)); 
+	// china_north_model_points.push_back(Point3d(+7.5f, +7.5f, 0));
+	// china_north_model_points.push_back(Point3d(+7.5f, -7.5f, 0));
+	// china_north_model_points.push_back(Point3d(0, 0, +7.5f));
+	// float china_north_distance = cal_distance(image_points, china_north_model_points);
 
-	// // 相机内参矩阵和畸变系数均由相机标定结果得出
-	// // 相机内参矩阵
-	// Mat camera_matrix = (Mat_<float>(3, 3) << 1545.8, 0, 0, 0, 1545.5, 0, 975.0269, 579.3380, 1);
-	// // 相机畸变系数
-	// Mat dist_coeffs = (Mat_<float>(5, 1) << 0.0879, -0.131,0, 0, 0);
+	// 卡尔曼滤波
+	float kf_distance = kf -> get_my_kalman_filter_result(distance);
+	cout << "football_distance: " << distance << endl;
+	cout << "kf_football_distance: " << kf_distance << endl;
 
-	//copy相机参数
-	Mat camera_matrix = (Mat_<float>(3, 3) << 659.9293277147924, 0, 145.8791713723572,
-    0, 635.3941888799933, 120.2096985290085,
-        0, 0, 1);
-    // copy相机畸变系数
-    Mat dist_coeffs = (Mat_<float>(5, 1) << -0.5885200737681696, 0.6747491058456546, 0.006768694852797847, 
-        0.02067272313155804, -0.3616453058722507);
+	// 迭代卡尔曼滤波值
+	pre_distance = distance;
+	pre_kf_distance = kf_distance;
 
-	/*
-		PNP算法求解
-	*/
+	// 构造发布msg
+	calculate_position_pkg::calculate_position_result cal_pos_res;
+	cal_pos_res.distance = distance;
+	// 4v4 distance
+	// cal_pos_res.kf_distance = kf_distance;
 
-	// 旋转向量
-	Mat rotation_vector;
-	// 平移向量
-	Mat translation_vector;
+	// 计算10次平均值
+	if(pre_distance_vec.size() >= 10) {
+		pre_distance_vec.push_back(kf_distance);
+		pre_distance_vec.erase(pre_distance_vec.begin());
+	}else {
+		pre_distance_vec.push_back(kf_distance);
+	}
+	// 求平均
+	float average = calAverage(pre_distance_vec);
+	cout << "pre 10 average: " << average << endl;
+	// 求中位
+	vector<float> pre_distance_vec_sort = pre_distance_vec;
+	sort(pre_distance_vec_sort.begin(), pre_distance_vec_sort.end());
+	if(pre_distance_vec_sort.size() >= 10) {
+		cout << "pre 10 mid: " << pre_distance_vec_sort[5] << endl;
+	}
+
+	cal_pos_res.kf_distance = average;
+	CreateBaseCalculatePositionMsg(cal_pos_res, msg);
+	// std::cout << cal_pos_res << std::endl;
+	pub_cal_pos_res.publish(cal_pos_res);
+
+	// /*
+	// 	构造相机参数
+	// */
+
+	// // // 相机内参矩阵和畸变系数均由相机标定结果得出
+	// // // 相机内参矩阵
+	// // Mat camera_matrix = (Mat_<float>(3, 3) << 1545.8, 0, 0, 0, 1545.5, 0, 975.0269, 579.3380, 1);
+	// // // 相机畸变系数
+	// // Mat dist_coeffs = (Mat_<float>(5, 1) << 0.0879, -0.131,0, 0, 0);
+
+	// //copy相机参数
+	// Mat camera_matrix = (Mat_<float>(3, 3) << 659.9293277147924, 0, 145.8791713723572,
+    // 0, 635.3941888799933, 120.2096985290085,
+    //     0, 0, 1);
+    // // copy相机畸变系数
+    // Mat dist_coeffs = (Mat_<float>(5, 1) << -0.5885200737681696, 0.6747491058456546, 0.006768694852797847, 
+    //     0.02067272313155804, -0.3616453058722507);
+
+	// /*
+	// 	PNP算法求解
+	// */
+
+	// // 旋转向量
+	// Mat rotation_vector;
+	// // 平移向量
+	// Mat translation_vector;
 	
-	// 线性回归pnp求解
-	// solvePnP(model_points, image_points, camera_matrix, dist_coeffs, \
-	// 	rotation_vector, translation_vector, 0, CV_ITERATIVE);
+	// // 线性回归pnp求解
+	// // solvePnP(model_points, image_points, camera_matrix, dist_coeffs, \
+	// // 	rotation_vector, translation_vector, 0, CV_ITERATIVE);
 
-	// Epnp求解
-	// 默认CV_ITERATIVE方法，可尝试修改为EPNP（CV_EPNP）,P3P（CV_P3P）
-	solvePnP(model_points, image_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector, 0, 1);
+	// // Epnp求解
+	// // 默认CV_ITERATIVE方法，可尝试修改为EPNP（CV_EPNP）,P3P（CV_P3P）
+	// solvePnP(model_points, image_points, camera_matrix, dist_coeffs, rotation_vector, translation_vector, 0, 1);
 
-	Mat Rvec;
-	Mat_<float> Tvec;
+	// Mat Rvec;
+	// Mat_<float> Tvec;
 	
-	rotation_vector.convertTo(Rvec, CV_32F);  // 旋转向量转换格式
-	translation_vector.convertTo(Tvec, CV_32F); // 平移向量转换格式 
+	// rotation_vector.convertTo(Rvec, CV_32F);  // 旋转向量转换格式
+	// translation_vector.convertTo(Tvec, CV_32F); // 平移向量转换格式 
 	
-	Mat_<float> rotMat(3, 3);
-	Rodrigues(Rvec, rotMat);
-	// 旋转向量转成旋转矩阵
-	// cout << "rotMat" << endl << rotMat << endl << endl;
+	// Mat_<float> rotMat(3, 3);
+	// Rodrigues(Rvec, rotMat);
+	// // 旋转向量转成旋转矩阵
+	// // cout << "rotMat" << endl << rotMat << endl << endl;
 
-	Mat P_oc;
-	P_oc = -rotMat.inv() * Tvec;
-	// 求解相机的世界坐标，得出p_oc的第三个元素即相机到物体的距离即深度信息，单位是cm
+	// Mat P_oc;
+	// P_oc = -rotMat.inv() * Tvec;
+	// // 求解相机的世界坐标，得出p_oc的第三个元素即相机到物体的距离即深度信息，单位是cm
 
-	// 线性缩放
-	// P_oc.at<float>(2,0) *= 48;
-	// P_oc.at<float>(2,0) *= 17.3;
+	// // 线性缩放
+	// // P_oc.at<float>(2,0) *= 48;
+	// // P_oc.at<float>(2,0) *= 17.3;
 	
-	/*
-		提取距离
-	*/
+	// /*
+	// 	提取距离
+	// */
 
-	// Z轴
-	float distance = P_oc.at<float>(2,0);
-	// cout << "P_oc" << endl << P_oc << endl;
+	// // Z轴
+	// float distance = P_oc.at<float>(2,0);
+	// // cout << "P_oc" << endl << P_oc << endl;
 	
 	//人工滤波
 	// if(distance < 0 || distance > 500) return;
-		
-	float kf_distance = kf -> get_my_kalman_filter_result(distance);
-	cout << "distance: " << distance << endl;
-	cout << "kf_distance: " << kf_distance << endl;
-
-	pre_distance = distance;
-	pre_kf_distance = kf_distance;
 
 
 	/* 
@@ -329,13 +409,6 @@ void CalculatePnp(const calculate_position_pkg::image_points::ConstPtr& msg) {
 	// 	fputs(ch, fp);
 	// 	fclose(fp);
 	// }
-	// 构造发布msg
-	calculate_position_pkg::calculate_position_result cal_pos_res;
-	cal_pos_res.distance = distance;
-	cal_pos_res.kf_distance = kf_distance;
-	CreateBaseCalculatePositionMsg(cal_pos_res, msg);
-	// std::cout << cal_pos_res << std::endl;
-	pub_cal_pos_res.publish(cal_pos_res);
 	
 	// 辅助定位相关
 	// 构造数据

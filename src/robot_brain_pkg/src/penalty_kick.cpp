@@ -5,14 +5,14 @@
 #include "robot_brain_pkg/cmd_walk.h"
 #include "robot_brain_pkg/calculate_position_result.h"
 #include "robot_brain_pkg/robot_head_pos.h"
-#include "robot_brain_pkg/state_machine.h"
-// #include "robot_brain_pkg/state_machine_NorthChina.h"
+// #include "robot_brain_pkg/state_machine.h"
+#include "robot_brain_pkg/state_machine_NorthChina.h"
 
 
 // 状态机类
-StateMachine state_machine;
+// StateMachine state_machine;
 // 华北五省点球状态机
-// StateMachineNorthChina state_machine;
+StateMachineNorthChina state_machine;
 
 extern ros::Publisher pub_head_control;
 // 声明

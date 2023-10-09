@@ -54,7 +54,7 @@ def run(
         weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
         data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
-        imgsz=(480, 640),  # inference size (height, width)
+        imgsz=(640, 640),  # inference size (height, width)
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
         max_det=1000,  # maximum detections per image
@@ -104,7 +104,6 @@ def run(
         view_img = check_imshow()
         cudnn.benchmark = True  # set True to speed up constant image size inference
         dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt)
-        print(imgsz)
         bs = len(dataset)  # batch_size
     else:
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
@@ -162,7 +161,6 @@ def run(
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
-                print(im0.shape)
 
                 # Print results
                 for c in det[:, -1].unique():
@@ -202,7 +200,6 @@ def run(
                     # 填充发布类的
                     if class_index == 0:
                         im_p.football_xyxy = xyxy
-                        # print(xyxy)
                         log_str += "football "
                     elif class_index == 1:
                         im_p.goal_xyxy = xyxy
@@ -282,6 +279,11 @@ def run(
 
             pub = rospy.Publisher("chatter_image_points",image_points,queue_size=10)
             pub.publish(im_p)  #发布消息
+            
+            # if im_p.football_xyxy.size != 0:
+            #     pub = rospy.Publisher("chatter_image_points",image_points,queue_size=10)
+            #     temp_pub = 
+            
             # rospy.loginfo(f"发出坐标点x1:{im_p.x1} y1:{im_p.y1} x2:{im_p.x2} y2:{im_p.y2} x3:{im_p.x3} y3:{im_p.y3} x4:{im_p.x4} y1:{im_p.y4} ")
             rospy.loginfo(f"本帧要发布的类有:{log_str} ")
             rate.sleep()
@@ -342,8 +344,8 @@ def parse_opt():
     # parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='(optional) dataset.yaml path')
     parser.add_argument('--data', type=str, default=ROOT / 'data/football.yaml', help='(optional) dataset.yaml path')
     # parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
-    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=(480, 640), help='inference size h,w')
-    parser.add_argument('--conf-thres', type=float, default=0.6, help='confidence threshold')
+    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[480, 640], help='inference size h,w')
+    parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
     parser.add_argument('--max-det', type=int, default=1000, help='maximum detections per image')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')

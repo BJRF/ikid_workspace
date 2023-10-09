@@ -105,10 +105,10 @@ int main(int argc, char **argv)
     pub_head_pos = nh.advertise<robot_brain_pkg::robot_head_pos>("/ikid_robot/robot_head_pos_msg",1);
     
     //创建Subscribe，订阅名为chatter的话题，注册回调函数chatterCallBack
-    ros::Subscriber sub = nh.subscribe("/chatter_head_control", 10, headControl);
+    ros::Subscriber sub = nh.subscribe("/chatter_head_control", 1, headControl);
 
     // 半秒一回调
-    ros::Rate rate(2);
+    ros::Rate rate(10);
     //循环等待消息回调
     while(ros::ok()) {
         ros::spinOnce();

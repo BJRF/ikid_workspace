@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(robot_brain_pkg)
-
-set(OpenCV_DIR /home/nvidia/opencv_build/opencv-4.5.1/)
+project(game_controller)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -9,12 +7,10 @@ set(OpenCV_DIR /home/nvidia/opencv_build/opencv-4.5.1/)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(OpenCV REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
-  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -77,22 +73,6 @@ find_package(catkin REQUIRED COMPONENTS
 #   std_msgs
 # )
 
-add_message_files(
-  FILES
-  robot_head_pos.msg
-  image_points.msg
-  calculate_position_result.msg
-  head_contol_by_brain.msg
-  cmd_walk.msg
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
-
-
-
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
 ################################################
@@ -124,10 +104,9 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES robot_brain_pkg
+#  LIBRARIES game_controller
 #  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
-  CATKIN_DEPENDS roscpp rospy std_msgs  message_runtime
 )
 
 ###########
@@ -137,14 +116,13 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
+# include
   ${catkin_INCLUDE_DIRS}
-  ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/robot_brain_pkg.cpp
+#   src/${PROJECT_NAME}/game_controller.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -155,72 +133,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/robot_brain_pkg_node.cpp)
-
-
-
-
-# hjf
-# add_library(kalman_filter_calculate_position_pkg include/calculate_position/kalman_filter.h src/source/kalman_filter.cpp)
-# add_dependencies(kalman_filter_calculate_position_pkg ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-# target_link_libraries(kalman_filter_calculate_position_pkg ${catkin_LIBRARIES} )
-
-add_executable(robot_brain
-  src/robot_brain.cpp
-)
-
-add_executable(head_control
-  src/head_control.cpp
-)
-
-add_executable(corner_kick
-  src/corner_kick.cpp
-)
-
-add_executable(pick_ball
-  src/pick_ball.cpp
-)
-
-add_executable(penalty_kick
-  src/penalty_kick.cpp
-)
-
-target_link_libraries(robot_brain
-  # kalman_filter_calculate_position_pkg
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-
-target_link_libraries(head_control
-  # kalman_filter_calculate_position_pkg
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-
-target_link_libraries(corner_kick
-  # kalman_filter_calculate_position_pkg
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-
-target_link_libraries(pick_ball
-  # kalman_filter_calculate_position_pkg
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-
-target_link_libraries(penalty_kick
-  # kalman_filter_calculate_position_pkg
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-
-# hjf
-
-
-
-
-
+add_executable(game_controller src/game_controller.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -233,9 +146,9 @@ target_link_libraries(penalty_kick
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(game_controller
+  ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##
@@ -284,7 +197,7 @@ target_link_libraries(penalty_kick
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_robot_brain_pkg.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_game_controller.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

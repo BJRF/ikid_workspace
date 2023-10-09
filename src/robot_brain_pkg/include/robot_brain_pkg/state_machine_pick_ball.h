@@ -15,14 +15,14 @@
 #define PI acos(-1)
 #define FIND_FOOTBALL_STATE_FRAME_INTERVAL 8
 #define FOUND_FOOTBALL_TRIGGER 6
-#define LOST_FOOTBALL_TRIGGER 30
-#define FOLLOW_FPOINT_EDGE_LEFT 310
-#define FOLLOW_FPOINT_EDGE_RIGHT 330
-#define FOLLOW_FPOINT_EDGE_UP 230
-#define FOLLOW_FPOINT_EDGE_DOWN 250
+#define LOST_FOOTBALL_TRIGGER 8
+#define FOLLOW_FPOINT_EDGE_LEFT 300
+#define FOLLOW_FPOINT_EDGE_RIGHT 320
+#define FOLLOW_FPOINT_EDGE_UP 220
+#define FOLLOW_FPOINT_EDGE_DOWN 260
 #define FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE 15
-#define ROTATION_OFFSET_ANGLE 2
-#define FRONT_OFFSET_ANGLE 2
+#define ROTATION_OFFSET_ANGLE 3
+#define FRONT_OFFSET_ANGLE 3
 #define MAX_WALK_ROTATION_ANGLE 15
 #define RIGHT_KICKBALL 3
 #define LEFT_KICKBALL 4
@@ -136,7 +136,7 @@ enum class Event {
 };
 
 // 状态机类
-class StateMachineNorthChina {
+class StateMachinePickBall {
 public:
     EnvData *cur_env_data; // 当前环境数据
     State cur_state;// 当前状态
@@ -181,7 +181,7 @@ public:
     int angle_vec_pos = 0;
 
     //状态机构造函数
-    StateMachineNorthChina() {
+    StateMachinePickBall() {
         cur_env_data = new EnvData();
         cur_state = State::Initial;
         pre_state = State::Initial;
@@ -322,24 +322,12 @@ public:
     //调用踢球步态
     void kickFootball() {
         std_msgs::Int16 msg;
-        //如果头部旋转关节角度小于10，且摄像头有球信息，优先通过球像素坐标判断位置
-        // if(abs(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle) < 10 && cur_env_data->football_xyxy.size() != 0) {
-        //     int central_point_x = cur_env_data->football_xyxy[0] + (cur_env_data->football_xyxy[2] - cur_env_data->football_xyxy[0]) / 2; // 640
-        //     int central_point_y = cur_env_data->football_xyxy[1] + (cur_env_data->football_xyxy[3] - cur_env_data->football_xyxy[1]) / 2; // 480
-        //     std::cout << "central_point_x" << central_point_x << std::endl;
-        //     if(central_point_x > 320) {// 右脚踢球
-        //         msg.data = RIGHT_KICKBALL;
-        //     }else {// 左脚踢球
-        //         msg.data = LEFT_KICKBALL;
-        //     }
-        // }else {// 否则通过像头部舵机判断左右脚踢球
-            // 右脚踢球
-            if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < 0) {
-                msg.data = RIGHT_KICKBALL;
-            }else {// 左脚踢球
-                msg.data = LEFT_KICKBALL;
-            }
-        // }
+        // 右脚踢球
+        if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < 0) {
+            msg.data = 30;
+        }else {// 左脚踢球
+            msg.data = 30;
+        }
         std::cout << "pusblish kick:" << msg << std::endl;
         pub_spcial.publish(msg);
     }
@@ -357,8 +345,6 @@ public:
         }
         int central_point_x = football_xyxy[0] + (football_xyxy[2] - football_xyxy[0]) / 2; // 640
         int central_point_y = football_xyxy[1] + (football_xyxy[3] - football_xyxy[1]) / 2; // 480
-        std::cout << "central_point_x" << central_point_x << std::endl;
-        std::cout << "football_xyxy_x2" << football_xyxy[2] << std::endl;
         double rotation_offset_angle = 0;
         double front_offset_angle = 0;
         if(central_point_x < FOLLOW_FPOINT_EDGE_LEFT) {
@@ -375,175 +361,195 @@ public:
         // << "up&down:" << front_offset_angle<<std::endl;
         // std::cout << cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle << std::endl;
         // std::cout << cur_env_data->robot_head_pos_angle.neck_front_swing_theta_angle << std::endl;
-
-        if(frame % 2 == 0) { 
+        if(frame % 3 == 0) { 
             controlHead(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle + rotation_offset_angle, 
             cur_env_data->robot_head_pos_angle.neck_front_swing_theta_angle + front_offset_angle, false, false);
         }
     }
 
+    bool walk_flag = false;
+    bool first = true;
+    bool kick_flag = false;
     // getNextStateByEnvCurState 由环境和当前状态得到下一个状态，并执行下一个状态
     State getNextStateByEnvCurState() {
+        if(first) {
+            controlHead(0, 60, false, false);\
+            first = false;
+        }
         if(cur_env_data->football_xyxy.size() > 0){
             adjHeadFollowFootBall(cur_env_data->football_xyxy);
+        }else if(football_lost_frames_nums >= LOST_FOOTBALL_TRIGGER) {
+            controlHead(0, 60, false, false);
         }
-        // return State::Initial;
-        //当前帧不是暂停帧才可以行动
-        if(frame <= until_pause_frame) {
-            if(cur_env_data -> parameters_srv_data.stop_walk_flag == false) {
-                runWalk(0, default_walk_width, true, false, 0);
-            }
-            return cur_state;
+        if(walk_flag == false) {
+            walk_flag = true; 
+            runWalk(default_walk_length/2, default_walk_width, false, false, 0);
+            ros::Duration(35).sleep();
+            //停止走路
+            runWalk(0, default_walk_width, true, false, 0);
+            ros::Duration(2).sleep();
+            // 进入踢球状态
+            kick_flag = true;
+            // walk_flag = false; 
+            return State::Initial;
         }
-        switch (cur_state) {
-            case State::Initial:
-                // 状态是初始化，则进入找球状态
-                std::cout << "[" << frame << "]初始化结束进入找球状态" << std::endl;
-                return State::FindFootball;
-                break;
-
-            //找球模式要改成每帧都判断，通过frame求余或者计数求余来循环找球，所有状态都要视觉跟球
-            case State::FindFootball:
-                if(cur_env_data -> parameters_srv_data.stop_walk_flag == false)
-                    runWalk(0, default_walk_width, true, false, 0);
-                // 刚刚进入找球模式，初始化找球参数,FIND_FOOTBALL_FRAME_INTERVAL帧后动循环摄像头
-                if(pre_state != State::FindFootball) {
-                    findFootballParamInit();
-                    next_find_football_state_frame = frame + FIND_FOOTBALL_STATE_FRAME_INTERVAL;
-                    std::cout << "[" << frame << "]找球状态开始，相关参数已初始化" << std::endl;
-                    return State::FindFootball;
-                }
-                // 如果找球过程中发现了球且大于FOUND_FOOTBALL_TRIGGER帧
-                if (cur_env_data -> football_xyxy.size() != 0 && football_sustain_frames_nums >= FOUND_FOOTBALL_TRIGGER) {
-                    // 头部相关参数归位，停止继续转动摄像头
-                    std::cout << "[" << frame << "]连续发现球，退出找球状态，改变状态为跟球" << std::endl;
-                    return State::FollowObject;
-                }
-                // 没有找到球，当前帧是下一个转动摄像头的帧,转动摄像头
-                if(frame == next_find_football_state_frame) {
-                    controlHead(angle_vec[angle_vec_pos][0], angle_vec[angle_vec_pos][1], false, false);
-                    angle_vec_pos++;
-                    // 循环数组，并向右原地转圈
-                    if(angle_vec_pos == angle_vec.size()){
-                        angle_vec_pos = 0;
-                        // zangshizhudiao
-                        // runWalk(0, default_walk_width, false, false, angleToRadian(-30));
-                    }
-                    next_find_football_state_frame = frame + FIND_FOOTBALL_STATE_FRAME_INTERVAL;
-                    std::cout << "[" << frame << "]找球模式下没有找到球，继续找球" << std::endl;
-                    return State::FindFootball;
-                }
-                return State::FindFootball;
-                break;
-
-            case State::AdjPosInPlace:
-                return State::AdjPosInPlace;
-                break;
-
-            case State::FollowObject:
-                //如果在跟过程中球丢失
-                if(football_lost_frames_nums >= LOST_FOOTBALL_TRIGGER) {
-                    confirming_kick = false;
-                    std::cout << "[" << frame << "]跟球过程中球丢失,回到找球状态" << std::endl;
-                    return State::FindFootball;
-                }
-
-                // if(cur_env_data->football_xyxy.size() > 0){
-                //     adjHeadFollowFootBall(cur_env_data->football_xyxy);
-                // }
-
-
-                //左右偏转逻辑，点球暂时注释
-                //如果球很远，才要调整身体位置，否则直接踢球NO_ADJUST_BODY_DISTANCE
-                // if(abs(cur_env_data -> kf_distance) >= NO_ADJUST_BODY_DISTANCE && cur_env_data -> distance != 0) {
-                //     //如果摄像头偏了，給2s调整身体
-                //     if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE || 
-                //     cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < -FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE) {
-                //         confirming_kick = false;
-                //         // 摄像头x轴如果是+,说明物体在左，则身体要往左，也就是walk偏转角度要为+
-                //         // 摄像头x轴如果是-,说明物体在右，则身体要往右，也就是walk偏转角度要为-
-                //         if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > MAX_WALK_ROTATION_ANGLE) {
-                //             runWalk(0, default_walk_width, false, false, angleToRadian(MAX_WALK_ROTATION_ANGLE + 5));
-                //         }else if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle <= MAX_WALK_ROTATION_ANGLE && cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > 0){
-                //             runWalk(0, default_walk_width, false, false, angleToRadian(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle + 5));
-                //         }else if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < -MAX_WALK_ROTATION_ANGLE) {
-                //             runWalk(0, default_walk_width, false, false, angleToRadian(-MAX_WALK_ROTATION_ANGLE - 5));
-                //         }else {
-                //             runWalk(0, default_walk_width, false, false, angleToRadian(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle - 5));
-                //         }
-                        
-                //         // -----------------------------待调整---------------------------------------------
-                //         // 摄像头的x轴调整到0
-                //         // controlHead(0, cur_env_data->robot_head_pos_angle.neck_front_swing_theta_angle, false, false);
-                //         std::cout << "[" << frame << "]头偏过大，暂停调整身体;distance:" << abs(cur_env_data -> kf_distance) << std::endl;
-                //         //暂停60帧给下位机移动身体和头部的时间
-                //         pauseNFrame(20);
-                //         return State::FollowObject;
-                //     }
-                // }
-
-
-
-                //如果到了踢球的距离,!=0防止没有找到球传空数据的情况
-                // 暂停30帧确认球的距离和位置
-                if(abs(cur_env_data -> kf_distance) < KICK_FOOTBALL_DISTANCE_TRIGGER && cur_env_data -> distance != 0 && 
-                football_sustain_frames_nums >= FOUND_FOOTBALL_TRIGGER) {
-                    if(confirming_kick == false) {
-                        if(cur_env_data -> parameters_srv_data.stop_walk_flag == false) {
-                            runWalk(0, default_walk_width, true, false, 0);
-                        }
-                        pauseNFrame(30);
-                        confirming_kick = true;
-                        std::cout << "[" << frame << "]似乎球距离已经可以踢，暂停30帧确认一下" << std::endl;
-                        return State::FollowObject;
-                    } else {
-                        confirming_kick = false;
-                        std::cout << "[" << frame << "]暂停30帧确认后，距离和目标确认无误，进入踢球状态" << std::endl;
-                        return State::KickFootball;
-                    }
-                }
-                // else {// new test
-                //     confirming_kick = false;
-                // }
-                
-                //摄像头没偏，也没丢失球，则继续walk跟球，并实时调整摄像头位置
-                //（可以加一个参数服务器限制）
-                // if(abs(cur_env_data->kf_distance) <= 100) {
-                //     runWalk(default_walk_length/2, default_walk_width, false, false, 0);
-                // }else {
-                runWalk(default_walk_length/3, default_walk_width, false, false, 0);
-                // }
-                // adjHeadFollowFootBall(cur_env_data->football_xyxy);
-                return State::FollowObject;
-                break;
-
-            case State::KickFootball:
-                // 停止运动
-                if(cur_env_data -> parameters_srv_data.stop_walk_flag == false) {
-                    runWalk(0, default_walk_width, true, false, 0);
-                }
-                // 调用踢球
+        if(kick_flag) {
+            int central_point_x = cur_env_data->football_xyxy[0] + (cur_env_data->football_xyxy[2] - cur_env_data->football_xyxy[0]) / 2; // 640
+            if(cur_env_data->football_xyxy.size() > 0 && central_point_x > 460) {
+                kick_flag = false;
                 kickFootball();
-                std::cout << "[" << frame << "]调用踢球步态，停止运动，进入特殊步态状态" << std::endl;
-                return State::SpecialGait;
-
-            case State::SpecialGait:
-                if(!cur_env_data->parameters_srv_data.stop_special_gait_flag) {
-                    std::cout << "[" << frame << "]参数服务器还在特殊步态状态，保持特殊步态状态" << std::endl;
-                    return State::SpecialGait;
-                }else {
-                    std::cout << "[" << frame << "]参数服务器结束特殊步态状态，进入跟球状态" << std::endl;
-                    return State::FollowObject;
-                }
-                break;
-
-            default:
-                // ROS_INFO("逻辑边界，机器人初始化");
-                std::cout << "[" << frame << "]逻辑边界，机器人初始化" << std::endl;
-                return State::Initial;
-                break;
+                //重新允许走路
+                walk_flag = false;
+            }else if(cur_env_data->football_xyxy.size() > 0 && central_point_x <= 460) {
+                std_msgs::Int16 msg;
+                msg.data = 0;//左
+                pub_parallelMove.publish(msg);
+                kick_flag = false;
+                kickFootball();
+                //重新允许走路
+                walk_flag = false;
+            }
         }
+        return State::Initial;
     }
+
+        // //当前帧不是暂停帧才可以行动
+        // if(frame <= until_pause_frame) {
+        //     if(cur_env_data -> parameters_srv_data.stop_walk_flag == false)
+        //         runWalk(0, default_walk_width, true, false, 0);
+        //     return cur_state;
+        // }
+
+    //     switch (cur_state) {
+    //         case State::Initial:
+    //             // 状态是初始化，则进入找球状态
+    //             std::cout << "[" << frame << "]初始化结束进入找球状态" << std::endl;
+    //             return State::FindFootball;
+    //             break;
+
+    //         //找球模式要改成每帧都判断，通过frame求余或者计数求余来循环找球，所有状态都要视觉跟球
+    //         case State::FindFootball:
+    //             if(cur_env_data -> parameters_srv_data.stop_walk_flag == false)
+    //                 runWalk(0, default_walk_width, true, false, 0);
+    //             // 刚刚进入找球模式，初始化找球参数,FIND_FOOTBALL_FRAME_INTERVAL帧后动循环摄像头
+    //             if(pre_state != State::FindFootball) {
+    //                 findFootballParamInit();
+    //                 next_find_football_state_frame = frame + FIND_FOOTBALL_STATE_FRAME_INTERVAL;
+    //                 std::cout << "[" << frame << "]找球状态开始，相关参数已初始化" << std::endl;
+    //                 return State::FindFootball;
+    //             }
+    //             // 如果找球过程中发现了球且大于FOUND_FOOTBALL_TRIGGER帧
+    //             if (cur_env_data -> football_xyxy.size() != 0 && football_sustain_frames_nums >= FOUND_FOOTBALL_TRIGGER) {
+    //                 // 头部相关参数归位，停止继续转动摄像头
+    //                 std::cout << "[" << frame << "]连续发现球，退出找球状态，改变状态为跟球" << std::endl;
+    //                 return State::FollowObject;
+    //             }
+    //             // 没有找到球，当前帧是下一个转动摄像头的帧,转动摄像头
+    //             if(frame == next_find_football_state_frame) {
+    //                 controlHead(angle_vec[angle_vec_pos][0], angle_vec[angle_vec_pos][1], false, false);
+    //                 angle_vec_pos++;
+    //                 // 循环数组，并向右原地转圈
+    //                 if(angle_vec_pos == angle_vec.size()){
+    //                     angle_vec_pos = 0;
+    //                     runWalk(0, default_walk_width, false, false, angleToRadian(-30));
+    //                 }
+    //                 next_find_football_state_frame = frame + FIND_FOOTBALL_STATE_FRAME_INTERVAL;
+    //                 std::cout << "[" << frame << "]找球模式下没有找到球，继续找球" << std::endl;
+    //                 return State::FindFootball;
+    //             }
+    //             return State::FindFootball;
+    //             break;
+
+    //         case State::AdjPosInPlace:
+    //             return State::AdjPosInPlace;
+    //             break;
+
+    //         case State::FollowObject:
+    //             //如果在跟过程中球丢失
+    //             if(football_lost_frames_nums >= LOST_FOOTBALL_TRIGGER) {
+    //                 confirming_kick = false;
+    //                 std::cout << "[" << frame << "]跟球过程中球丢失,回到找球状态" << std::endl;
+    //                 return State::FindFootball;
+    //             }
+
+    //             // if(cur_env_data->football_xyxy.size() > 0){
+    //             //     adjHeadFollowFootBall(cur_env_data->football_xyxy);
+    //             // }
+
+    //             //如果球很远，才要调整身体位置，否则直接踢球NO_ADJUST_BODY_DISTANCE
+    //             if(abs(cur_env_data -> kf_distance) >= NO_ADJUST_BODY_DISTANCE && cur_env_data -> distance != 0) {
+    //                 //如果摄像头偏了，給2s调整身体
+    //                 if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE || 
+    //                 cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < -FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE) {
+    //                     confirming_kick = false;
+    //                     // 摄像头x轴如果是-,说明物体在you，则身体要往you，也就是walk偏转角度要为负
+    //                     if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > MAX_WALK_ROTATION_ANGLE) {
+    //                         runWalk(0, default_walk_width, false, false, angleToRadian(MAX_WALK_ROTATION_ANGLE));
+    //                     }else {
+    //                         runWalk(0, default_walk_width, false, false, angleToRadian(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle));
+    //                     }
+    //                     // 摄像头的x轴调整到0
+    //                     controlHead(0, cur_env_data->robot_head_pos_angle.neck_front_swing_theta_angle, false, false);
+    //                     std::cout << "[" << frame << "]头偏过大，暂停调整身体;distance:" << abs(cur_env_data -> kf_distance)  << std::endl;
+    //                     //暂停60帧给下位机移动身体和头部的时间
+    //                     pauseNFrame(50);
+    //                     return State::FollowObject;
+    //                 }
+    //             }
+    //             //如果到了踢球的距离,!=0防止没有找到球传空数据的情况
+    //             // 暂停30帧确认球的距离和位置
+    //             if(abs(cur_env_data -> kf_distance) < KICK_FOOTBALL_DISTANCE_TRIGGER && cur_env_data -> distance != 0 && 
+    //             football_sustain_frames_nums >= FOUND_FOOTBALL_TRIGGER) {
+    //                 if(confirming_kick == false) {
+    //                     if(cur_env_data -> parameters_srv_data.stop_walk_flag == false)
+    //                         runWalk(0, default_walk_width, true, false, 0);
+    //                     pauseNFrame(30);
+    //                     confirming_kick = true;
+    //                     std::cout << "[" << frame << "]似乎球距离已经可以踢，暂停30帧确认一下" << std::endl;
+    //                     return State::FollowObject;
+    //                 } else {
+    //                     confirming_kick = false;
+    //                     std::cout << "[" << frame << "]暂停30帧确认后，距离和目标确认无误，进入踢球状态" << std::endl;
+    //                     return State::KickFootball;
+    //                 }
+    //             }
+    //             //摄像头没偏，也没丢失球，则继续walk跟球，并实时调整摄像头位置
+    //             //（可以加一个参数服务器限制）
+    //             // if(abs(cur_env_data->kf_distance) <= 100) {
+    //             //     runWalk(default_walk_length/2, default_walk_width, false, false, 0);
+    //             // }else {
+    //             runWalk(default_walk_length, default_walk_width, false, false, 0);
+    //             // }
+    //             // adjHeadFollowFootBall(cur_env_data->football_xyxy);
+    //             return State::FollowObject;
+    //             break;
+
+    //         case State::KickFootball:
+    //             // 停止运动
+    //             if(cur_env_data -> parameters_srv_data.stop_walk_flag == false)
+    //                 runWalk(0, default_walk_width, true, false, 0);
+    //             // 调用踢球
+    //             kickFootball();
+    //             std::cout << "[" << frame << "]调用踢球步态，停止运动，进入特殊步态状态" << std::endl;
+    //             return State::SpecialGait;
+
+    //         case State::SpecialGait:
+    //             if(!cur_env_data->parameters_srv_data.stop_special_gait_flag) {
+    //                 std::cout << "[" << frame << "]参数服务器还在特殊步态状态，保持特殊步态状态" << std::endl;
+    //                 return State::SpecialGait;
+    //             }else {
+    //                 std::cout << "[" << frame << "]参数服务器结束特殊步态状态，进入跟球状态" << std::endl;
+    //                 return State::FollowObject;
+    //             }
+    //             break;
+
+    //         default:
+    //             // ROS_INFO("逻辑边界，机器人初始化");
+    //             std::cout << "[" << frame << "]逻辑边界，机器人初始化" << std::endl;
+    //             return State::Initial;
+    //             break;
+    //     }
+    // }
 
     // 暂时废弃，使用一个新节点控制头部
     // 运行头部的线程
@@ -588,7 +594,7 @@ public:
         // thread.join();
     // }
 
-private:
+// private:
     // 当前状态
     // std::atomic<State> currentState;
     // 线程对象
