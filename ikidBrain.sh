@@ -29,4 +29,3 @@ sleep 5s; \
 source /home/nvidia/ikid_ws/devel/setup.bash; \
 rosrun realtime_detect_pkg realtime_detect.py; \
 exec bash"
-
