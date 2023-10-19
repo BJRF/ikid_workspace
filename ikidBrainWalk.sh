@@ -15,7 +15,7 @@ exec bash"
 
 gnome-terminal --tab -- bash -c "\
 source /home/nvidia/ikid_ws/devel/setup.bash; \
-rosrun robot_brain_pkg robot_brain; \
+rosrun robot_brain_pkg robot_brain_walk; \
 exec bash"
 
 gnome-terminal --tab -- bash -c "\

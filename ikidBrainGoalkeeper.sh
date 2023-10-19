@@ -3,11 +3,6 @@
 # gnome-terminal --tab -- bash -c "roscore; exec bash"
 
 gnome-terminal --tab -- bash -c "\
-source /home/nvidia/ikid_ws/devel/setup.bash; \
-rosrun game_controller game_controller; \
-exec bash"
-
-gnome-terminal --tab -- bash -c "\
 sleep 5s;\
 source /home/nvidia/ikid_ws/devel/setup.bash; \
 rosrun robot_brain_pkg head_control; \
@@ -15,7 +10,7 @@ exec bash"
 
 gnome-terminal --tab -- bash -c "\
 source /home/nvidia/ikid_ws/devel/setup.bash; \
-rosrun robot_brain_pkg robot_brain; \
+rosrun robot_brain_pkg robot_brain_goalkeeper; \
 exec bash"
 
 gnome-terminal --tab -- bash -c "\

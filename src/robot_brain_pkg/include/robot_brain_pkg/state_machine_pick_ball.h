@@ -15,7 +15,7 @@
 #define PI acos(-1)
 #define FIND_FOOTBALL_STATE_FRAME_INTERVAL 8
 #define FOUND_FOOTBALL_TRIGGER 6
-#define LOST_FOOTBALL_TRIGGER 8
+#define LOST_FOOTBALL_TRIGGER 30
 #define FOLLOW_FPOINT_EDGE_LEFT 300
 #define FOLLOW_FPOINT_EDGE_RIGHT 320
 #define FOLLOW_FPOINT_EDGE_UP 220
@@ -41,6 +41,8 @@ ros::Publisher pub_parallelMove;
 // 文件输入输出流
 std::fstream fout;
 std::fstream fin;
+
+bool pick_flag = true;
 
 const char head_pos_file_path[] = "/home/nvidia/ikid_ws/src/robot_brain_pkg/data/head_pos_angle.txt";
 
@@ -324,9 +326,9 @@ public:
         std_msgs::Int16 msg;
         // 右脚踢球
         if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < 0) {
-            msg.data = 30;
+            msg.data = RIGHT_KICKBALL;
         }else {// 左脚踢球
-            msg.data = 30;
+            msg.data = LEFT_KICKBALL;
         }
         std::cout << "pusblish kick:" << msg << std::endl;
         pub_spcial.publish(msg);
@@ -367,50 +369,22 @@ public:
         }
     }
 
-    bool walk_flag = false;
-    bool first = true;
-    bool kick_flag = false;
     // getNextStateByEnvCurState 由环境和当前状态得到下一个状态，并执行下一个状态
     State getNextStateByEnvCurState() {
-        if(first) {
-            controlHead(0, 60, false, false);\
-            first = false;
-        }
         if(cur_env_data->football_xyxy.size() > 0){
             adjHeadFollowFootBall(cur_env_data->football_xyxy);
-        }else if(football_lost_frames_nums >= LOST_FOOTBALL_TRIGGER) {
-            controlHead(0, 60, false, false);
         }
-        if(walk_flag == false) {
-            walk_flag = true; 
+        if(football_lost_frames_nums >= LOST_FOOTBALL_TRIGGER) {
+            controlHead(0, -30, false, false);
+        }
+        if(pick_flag == true) {
+            pick_flag = false; 
             runWalk(default_walk_length/2, default_walk_width, false, false, 0);
-            ros::Duration(35).sleep();
-            //停止走路
-            runWalk(0, default_walk_width, true, false, 0);
-            ros::Duration(2).sleep();
-            // 进入踢球状态
-            kick_flag = true;
-            // walk_flag = false; 
+            ros::Duration(10).sleep();
+            kickFootball();
+            runWalk(0, default_walk_width, false, false, 0);
             return State::Initial;
         }
-        if(kick_flag) {
-            int central_point_x = cur_env_data->football_xyxy[0] + (cur_env_data->football_xyxy[2] - cur_env_data->football_xyxy[0]) / 2; // 640
-            if(cur_env_data->football_xyxy.size() > 0 && central_point_x > 460) {
-                kick_flag = false;
-                kickFootball();
-                //重新允许走路
-                walk_flag = false;
-            }else if(cur_env_data->football_xyxy.size() > 0 && central_point_x <= 460) {
-                std_msgs::Int16 msg;
-                msg.data = 0;//左
-                pub_parallelMove.publish(msg);
-                kick_flag = false;
-                kickFootball();
-                //重新允许走路
-                walk_flag = false;
-            }
-        }
-        return State::Initial;
     }
 
         // //当前帧不是暂停帧才可以行动

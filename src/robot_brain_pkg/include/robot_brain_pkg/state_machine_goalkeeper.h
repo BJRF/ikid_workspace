@@ -198,6 +198,8 @@ public:
     double default_walk_length = 0.08;
     double default_walk_width = 0.135;
 
+    int low_distance_frame = 0;
+
     // 角度
     // const std::vector<std::vector<float>> angle_vec = 
     // {{0, 15}, 
@@ -245,7 +247,8 @@ public:
     int ready_turn_count = 0;
 
     // 该机器人是否是前锋
-    bool is_forward = true;
+    // goalkeeper adjust
+    bool is_forward = false;
 
     // 开始比赛后累计转了多少度
     float turn_sum = 0;
@@ -266,7 +269,8 @@ public:
         ros::param::get("/pid_amend/walk_width", this -> default_walk_width);
         readConfig();
         readReadyWalktimeAngle();
-        readIsForward();
+        // readIsForward();
+        readgoalKeeperDistance();
     }
 
     // 更新环境信息(walk没有更新)
@@ -399,6 +403,15 @@ public:
         fin.close();
     }
 
+    float goalkeeper_distance = 100;
+    // 读取该机器人是否是前锋
+    void readgoalKeeperDistance() {
+        fin.open("/home/nvidia/ikid_ws/src/robot_brain_pkg/data/goalkeeper_distance.txt", std::ios::in);
+        fin >> goalkeeper_distance;
+        std::cout << "readGoalkeeperDistance" << goalkeeper_distance << std::endl;
+        fin.close();
+    }
+
     // 读取参数服务器信息
     ParametersSrvData readParametersSrvData() {
         ParametersSrvData temp_data;
@@ -511,42 +524,42 @@ public:
 
         // 判断裁判盒指令
         // std::cout << GameState << " " << RoboPenalty << std::endl;
-        if(GameState == 0 || GameState == 2 || GameState == 4 || RoboPenalty != 0) {
-            runWalk(0, default_walk_width, true, false, 0);
-            return cur_state;
-        }
+        // if(GameState == 0 || GameState == 2 || GameState == 4 || RoboPenalty != 0) {
+        //     runWalk(0, default_walk_width, true, false, 0);
+        //     return cur_state;
+        // }
 
-        // 裁判盒ready进场
-        if(GameState == 1 && ready_flag == false) {
-            std::cout << "[" << frame << "]裁判盒正在ready状态" << std::endl;
-            //判断进场锁是否有被使用，防止重复下发下位机指令
-            if(ready_lock == false) {
-                // 加锁
-                ready_lock = true;
+        // // 裁判盒ready进场
+        // if(GameState == 1 && ready_flag == false) {
+        //     std::cout << "[" << frame << "]裁判盒正在ready状态" << std::endl;
+        //     //判断进场锁是否有被使用，防止重复下发下位机指令
+        //     if(ready_lock == false) {
+        //         // 加锁
+        //         ready_lock = true;
 
-                std::cout << "[" << frame << "]机器人开始进场" << std::endl;
-                // 向前ready_walktime秒
-                runWalk(default_walk_length, default_walk_width, false, false, 0);
-                ros::Duration(ready_walktime).sleep();
-                // 停顿0.5s
-                runWalk(0, default_walk_width, true, false, 0);
-                ros::Duration(0.5).sleep();
-                // 转ready_angle*ready_turn_count度
-                for(int i = 0; i < ready_turn_count; i++) {
-                    runWalk(0, default_walk_width, false, false, angleToRadian(ready_angle));
-                    ros::Duration(2).sleep();
-                }
-                runWalk(0, default_walk_width, true, false, 0);
-                // 解锁
-                ready_lock = false;
-                // 进场结束
-                ready_flag = true;
-            }
-            return State::Initial;
-        }else if(GameState == 1 && ready_flag == true) { // 如果裁判盒指令是ready且机器人已经入场完成
-            std::cout << "[" << frame << "]机器人正在进场" << std::endl;
-            return State::Initial;
-        }
+        //         std::cout << "[" << frame << "]机器人开始进场" << std::endl;
+        //         // 向前ready_walktime秒
+        //         runWalk(default_walk_length, default_walk_width, false, false, 0);
+        //         ros::Duration(ready_walktime).sleep();
+        //         // 停顿0.5s
+        //         runWalk(0, default_walk_width, true, false, 0);
+        //         ros::Duration(0.5).sleep();
+        //         // 转ready_angle*ready_turn_count度
+        //         for(int i = 0; i < ready_turn_count; i++) {
+        //             runWalk(0, default_walk_width, false, false, angleToRadian(ready_angle));
+        //             ros::Duration(2).sleep();
+        //         }
+        //         runWalk(0, default_walk_width, true, false, 0);
+        //         // 解锁
+        //         ready_lock = false;
+        //         // 进场结束
+        //         ready_flag = true;
+        //     }
+        //     return State::Initial;
+        // }else if(GameState == 1 && ready_flag == true) { // 如果裁判盒指令是ready且机器人已经入场完成
+        //     std::cout << "[" << frame << "]机器人正在进场" << std::endl;
+        //     return State::Initial;
+        // }
 
         // std::cout << frame << std::endl;
         // std::cout << until_pause_frame_action << std::endl;
@@ -578,7 +591,13 @@ public:
             前锋标志位：启动时文件读取设置，前锋标志位 == false时，看到球小于200cm&&大于6帧则冲，然后前锋标志位设为true。
         */
         // 如果后卫看到小于200cm&&大于5帧则变为前锋
-        if(is_forward == false && abs(cur_env_data -> kf_distance) < 150 && football_sustain_frames_nums > 5) {
+        if(abs(cur_env_data -> kf_distance) < goalkeeper_distance) {
+            low_distance_frame++;
+        }else {
+            low_distance_frame = 0;
+        }
+
+        if(abs(cur_env_data -> kf_distance) < goalkeeper_distance && low_distance_frame > 6) {
             is_forward = true;
         }     
 
@@ -717,16 +736,16 @@ public:
                             return State::FollowObject;
                     } else {
                         //如果球门和网在正确范围内，则踢球
-                        if(goal_flag == true || net_flag == true) {
+                        // if(goal_flag == true || net_flag == true) {
                             confirming_kick = false;
-                            goal_flag = false;
-                            net_flag = false;
-                            std::cout << "[" << frame << "]暂停30帧确认后，距离和目标确认无误，进入踢球状态" << std::endl;
+                            // goal_flag = false;
+                            // net_flag = false;
+                            // std::cout << "[" << frame << "]暂停30帧确认后，距离和目标确认无误，进入踢球状态" << std::endl;
                             return State::KickFootball;
-                        }else {
-                            std::cout << "[" << frame << "]暂停30帧确认后，网和球门位置不对，进入找网状态" << std::endl;
-                            return State::FindNet;
-                        }
+                        // }else {
+                            // std::cout << "[" << frame << "]暂停30帧确认后，网和球门位置不对，进入找网状态" << std::endl;
+                            // return State::FindNet;
+                        // }
                     }
                 }
 

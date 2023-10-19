@@ -5,7 +5,7 @@
 #include "robot_brain_pkg/cmd_walk.h"
 #include "robot_brain_pkg/calculate_position_result.h"
 #include "robot_brain_pkg/robot_head_pos.h"
-#include "robot_brain_pkg/state_machine.h"
+#include "robot_brain_pkg/state_machine_walk.h"
 // #include "robot_brain_pkg/state_machine_NorthChina.h"
 
 
@@ -56,8 +56,6 @@ int main(int argc, char **argv)
         pub_head_control = nh.advertise<robot_brain_pkg::head_contol_by_brain>("/chatter_head_control",1);
         pub_parallelMove = nh.advertise<std_msgs::Int16>("/parallelMove",1);
         
-        std::cout << "build success2" << std::endl;
-
         //创建Subscribe，订阅名为chatter的话题，注册回调函数chatterCallBack
         //缓冲区队列设置1
         ros::Subscriber sub = nh.subscribe("chatter_calculate_position", 1, CollectEnvData);
