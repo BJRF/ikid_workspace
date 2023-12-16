@@ -26,6 +26,9 @@ struct UdpData {
     float kf_distance; //卡尔曼滤波后的计算距离
     float robot_distance; //机器人距离
     double neck_rotation_theta_angle;// 颈部旋转关节
+    int state;//0-data,1-run,2-kick
+    double var_theta;//if run
+    int kick_leg;//if kick
 };
 
 class UDPSender {

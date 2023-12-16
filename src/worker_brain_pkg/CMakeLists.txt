@@ -181,6 +181,15 @@ add_executable(helper_brain
   src/helper_brain.cpp
 )
 
+add_executable(new_helper_brain
+  src/new_helper_brain.cpp
+)
+
+add_executable(new_worker_brain
+  src/new_worker_brain.cpp
+)
+
+
 target_link_libraries(worker_brain
   # kalman_filter_calculate_position_pkg
   ${catkin_LIBRARIES}
@@ -194,6 +203,18 @@ target_link_libraries(worker_head_control
 )
 
 target_link_libraries(helper_brain
+  # kalman_filter_calculate_position_pkg
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+target_link_libraries(new_helper_brain
+  # kalman_filter_calculate_position_pkg
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+target_link_libraries(new_worker_brain
   # kalman_filter_calculate_position_pkg
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}

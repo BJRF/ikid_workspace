@@ -16,8 +16,8 @@
 
 #define PI acos(-1)
 #define FIND_FOOTBALL_STATE_FRAME_INTERVAL 8
-#define FOUND_FOOTBALL_TRIGGER 4
-#define LOST_FOOTBALL_TRIGGER 15
+#define FOUND_FOOTBALL_TRIGGER 6
+#define LOST_FOOTBALL_TRIGGER 30
 #define FOLLOW_FPOINT_EDGE_LEFT 300
 #define FOLLOW_FPOINT_EDGE_RIGHT 320
 #define FOLLOW_FPOINT_EDGE_UP 220
@@ -28,7 +28,7 @@
 #define MAX_WALK_ROTATION_ANGLE 15
 #define RIGHT_KICKBALL 3
 #define LEFT_KICKBALL 4
-#define NO_ADJUST_BODY_DISTANCE 60
+#define NO_ADJUST_BODY_DISTANCE 33
 // #define KICK_FOOTBALL_DISTANCE_TRIGGER 30
 
 float KICK_FOOTBALL_DISTANCE_TRIGGER;
@@ -170,9 +170,6 @@ public:
     // 下一个可以开始动的帧
     long long until_pause_frame = 0;
 
-    // 下一个可以开始juece的帧
-    long long until_pause_frame_action = 0;
-
     // 跟球状态中，进入正在确认是否踢球的标志位
     bool confirming_kick = false;
 
@@ -210,7 +207,6 @@ public:
     {{-60, 60}, {-30, 60}, {0, 60}, {30, 60}, {60, 60},
     {60, 40}, {30, 40}, {0, 40}, {-30, 40}, {-60, 40},
     {-60, 20}, {-30, 20}, {0, 20}, {30, 20}, {60, 20}, 
-    {60, 0}, {30, 0}, {0, 0}, {-30, 0}, {-60, 0},
     {30, 30}};
     int angle_vec_pos = 0;
 
@@ -463,11 +459,6 @@ public:
         until_pause_frame = frame + N;
     }
 
-    // 设置N帧暂停
-    void pauseNFrameAndAction(long long N) {
-        until_pause_frame_action = frame + N;
-    }
-
     // 根据球的位置调用摄像头跟球
     void adjHeadFollowFootBall(std::vector<int> football_xyxy){
         //可以控制帧数
@@ -548,12 +539,6 @@ public:
             return State::Initial;
         }
 
-        // std::cout << frame << std::endl;
-        // std::cout << until_pause_frame_action << std::endl;
-        if(frame <= until_pause_frame_action) {
-            return cur_state;
-        }
-
         //当前帧不是暂停帧才可以行动
         if(frame <= until_pause_frame) {
             if(cur_env_data -> parameters_srv_data.stop_walk_flag == false) {
@@ -602,7 +587,6 @@ public:
                 if(pre_state != State::FindFootball) {
                     findFootballParamInit();
                     next_find_football_state_frame = frame + FIND_FOOTBALL_STATE_FRAME_INTERVAL;
-                    runWalk(0, default_walk_width, true, false, 0);
                     std::cout << "[" << frame << "]找球状态开始，相关参数已初始化" << std::endl;
                     return State::FindFootball;
                 }
@@ -618,7 +602,6 @@ public:
                 }
                 // 没有找到球，当前帧是下一个转动摄像头的帧,转动摄像头
                 if(frame >= next_find_football_state_frame) {
-                    runWalk(0, default_walk_width, true, false, 0);
                     controlHead(angle_vec[angle_vec_pos][0], angle_vec[angle_vec_pos][1], false, false);
                     angle_vec_pos++;
                     // 循环数组，并向右原地转圈
@@ -649,6 +632,36 @@ public:
                 // if(cur_env_data->football_xyxy.size() > 0){
                 //     adjHeadFollowFootBall(cur_env_data->football_xyxy);
                 // }
+
+                //如果球很远，才要调整身体位置，否则直接踢球NO_ADJUST_BODY_DISTANCE
+                if(abs(cur_env_data -> kf_distance) >= NO_ADJUST_BODY_DISTANCE && cur_env_data -> distance != 0) {
+                    // 踢球和行走中的身体角度判断
+                    // 如果摄像头偏了，給2s调整身体
+                    if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE || 
+                    cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < -FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE) {
+                        confirming_kick = false;
+                        // 摄像头x轴如果是+,说明物体在左，则身体要往左，也就是walk偏转角度要为+
+                        if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > MAX_WALK_ROTATION_ANGLE) {
+                            runWalk(0, default_walk_width, false, false, angleToRadian(MAX_WALK_ROTATION_ANGLE + 5));
+                        }else if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle <= MAX_WALK_ROTATION_ANGLE && cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > 0){
+                            runWalk(0, default_walk_width, false, false, angleToRadian(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle + 5));
+                        }else if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < -MAX_WALK_ROTATION_ANGLE) {
+                            runWalk(0, default_walk_width, false, false, angleToRadian(-MAX_WALK_ROTATION_ANGLE - 5));
+                        }else {
+                            runWalk(0, default_walk_width, false, false, angleToRadian(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle - 5));
+                        }
+                        // 摄像头x轴如果是-,说明物体在右，则身体要往右，也就是walk偏转角度要为-
+                        
+                        // -----------------------------待调整---------------------------------------------
+                        // 摄像头的x轴调整到0
+                        // controlHead(0, cur_env_data->robot_head_pos_angle.neck_front_swing_theta_angle, false, false);
+                        std::cout << "[" << frame << "]头偏过大，暂停调整身体;distance:" << abs(cur_env_data -> kf_distance) << std::endl;
+                        //暂停60帧给下位机移动身体和头部的时间
+                        pauseNFrame(20);
+                        return State::FollowObject;
+                    }
+                }
+
 
                 // //--------------------
                 // // save head
@@ -729,39 +742,6 @@ public:
                         }
                     }
                 }
-
-                //如果球很远，才要调整身体位置，否则直接踢球NO_ADJUST_BODY_DISTANCE
-                if(abs(cur_env_data -> kf_distance) >= 40 && cur_env_data -> distance != 0) {
-                    // 踢球和行走中的身体角度判断
-                    // 如果摄像头偏了，給2s调整身体
-                    if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE + 10 || 
-                    cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < -FOLLOW_FOOTBALL_DEVIATE_TRIGGER_ANGLE - 10) {
-                        confirming_kick = false;
-                        // 摄像头x轴如果是+,说明物体在左，则身体要往左，也就是walk偏转角度要为+
-                        if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > MAX_WALK_ROTATION_ANGLE + 10) {
-                            runWalk(0, default_walk_width, false, false, angleToRadian(MAX_WALK_ROTATION_ANGLE + 5));
-                        // }else if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle <= MAX_WALK_ROTATION_ANGLE && cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle > 0){
-                        //     runWalk(0, default_walk_width, false, false, angleToRadian(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle + 5));
-                        }else if(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle < -MAX_WALK_ROTATION_ANGLE - 10) {
-                            runWalk(0, default_walk_width, false, false, angleToRadian(-MAX_WALK_ROTATION_ANGLE - 5));
-                        }else {
-                            runWalk(default_walk_length, default_walk_width, false, false, 0);
-                        }
-                        // }else {
-                        //     runWalk(0, default_walk_width, false, false, angleToRadian(cur_env_data->robot_head_pos_angle.neck_rotation_theta_angle - 5));
-                        // }
-                        // 摄像头x轴如果是-,说明物体在右，则身体要往右，也就是walk偏转角度要为-
-                        
-                        // -----------------------------待调整---------------------------------------------
-                        // 摄像头的x轴调整到0
-                        // controlHead(0, cur_env_data->robot_head_pos_angle.neck_front_swing_theta_angle, false, false);
-                        std::cout << "[" << frame << "]头偏过大，暂停调整身体;distance:" << abs(cur_env_data -> kf_distance) << std::endl;
-                        //暂停60帧给下位机移动身体和头部的时间
-                        pauseNFrame(20);
-                        return State::FollowObject;
-                    }
-                }
-
                 //摄像头没偏，也没丢失球，则继续walk跟球，并实时调整摄像头位置
                 //（可以加一个参数服务器限制）
                 // if(abs(cur_env_data->kf_distance) <= 100) {
@@ -792,10 +772,10 @@ public:
                 // net_sustain_frames_nums
 
                 //当前位置找网和门15帧
-                if(find_net_frame < 30) {
+                if(find_net_frame < 15) {
                     // 开始设置网和球门的信息in these 30 framess
                     // we can find 2 frame is ok in 30 frames
-                    if(cur_env_data->net_xyxy.size() > 0 && net_sustain_frames_nums >= 2){
+                    if(cur_env_data->net_xyxy.size() > 0 && net_sustain_frames_nums >= 3){
                         int net_central_point_x = cur_env_data->net_xyxy[0] + (cur_env_data->net_xyxy[2] - cur_env_data->net_xyxy[0]) / 2; // 640
                         int net_central_point_y = cur_env_data->net_xyxy[1] + (cur_env_data->net_xyxy[3] - cur_env_data->net_xyxy[1]) / 2; // 480
                         // 只要目标不偏移在二维图像边缘(偏中心)
@@ -805,7 +785,7 @@ public:
                         }
                         // }
                     }
-                    if(cur_env_data->goal_xyxy.size() > 0 && goal_sustain_frames_nums >= 2){
+                    if(cur_env_data->goal_xyxy.size() > 0 && goal_sustain_frames_nums >= 3){
                         int goal_central_point_x = cur_env_data->goal_xyxy[0] + (cur_env_data->goal_xyxy[2] - cur_env_data->goal_xyxy[0]) / 2; // 640
                         int goal_central_point_y = cur_env_data->goal_xyxy[1] + (cur_env_data->goal_xyxy[3] - cur_env_data->goal_xyxy[1]) / 2; // 480
                         // 只要目标不偏移在二维图像边缘(偏中心)
@@ -825,12 +805,6 @@ public:
                 //如果没找到网和门，持续找
                 if(goal_flag==false && net_flag==false) {
                     std::cout << "[" << frame << "]dont find net" << std::endl;
-                    // if(cur_env_data->goal_xyxy.size() == 0 && cur_env_data->net_xyxy.size() == 0) {
-                    //     runWalk(default_walk_length, default_walk_width, false, false, 0);
-                    //     pauseNFrameAndAction(60);
-                    //     // ros::Duration(2.5).sleep();
-                    //     return State::FindFootball;
-                    // }
                     if(turn_sum >= 0) {//如果累计朝向左边，则左平移+右转
                         //向左平移 
                         // "/parallelMove"
@@ -863,6 +837,7 @@ public:
                         std::cout << "向左转30度" << std::endl;
                         pauseNFrame(60);
                     }
+
                     return State::FindNet;
                 }else {
                     //找到后累计转向归0

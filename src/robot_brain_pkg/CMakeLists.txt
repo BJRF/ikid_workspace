@@ -185,12 +185,8 @@ add_executable(penalty_kick
   src/penalty_kick.cpp
 )
 
-add_executable(robot_brain_walk
-  src/robot_brain_walk.cpp
-)
-
-add_executable(robot_brain_goalkeeper
-  src/robot_brain_goalkeeper.cpp
+add_executable(robot_brain_NorthChina_goalkeeper
+  src/robot_brain_NorthChina_goalkeeper.cpp
 )
 
 target_link_libraries(robot_brain
@@ -223,13 +219,7 @@ target_link_libraries(penalty_kick
   ${OpenCV_LIBS}
 )
 
-target_link_libraries(robot_brain_walk
-  # kalman_filter_calculate_position_pkg
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-
-target_link_libraries(robot_brain_goalkeeper
+target_link_libraries(robot_brain_NorthChina_goalkeeper
   # kalman_filter_calculate_position_pkg
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}

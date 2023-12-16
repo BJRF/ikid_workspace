@@ -9,22 +9,25 @@
 
 // 接收数据结构
 struct UdpData {
-    // std::vector<int32_t> football_xyxy;
-    // std::vector<int32_t> goal_xyxy;
-    // std::vector<int32_t> net_xyxy;
-    // std::vector<int32_t> robot_xyxy;
-    // std::vector<int32_t> penalty_mark_xyxy;
-    // std::vector<int32_t> center_circle_xyxy;
     int football_xyxy[4];
     int goal_xyxy[4];
     int net_xyxy[4];
     int robot_xyxy[4];
     int penalty_mark_xyxy[4];
     int center_circle_xyxy[4];
+    // std::vector<int> football_xyxy;
+    // std::vector<int> goal_xyxy;
+    // std::vector<int> net_xyxy;
+    // std::vector<int> robot_xyxy;
+    // std::vector<int> penalty_mark_xyxy;
+    // std::vector<int> center_circle_xyxy;
     float distance; //原始PNP计算距离
     float kf_distance; //卡尔曼滤波后的计算距离
     float robot_distance; //机器人距离
-    double neck_rotation_theta_angle; // 颈部旋转关节
+    double neck_rotation_theta_angle;// 颈部旋转关节
+    int state;//0-data,1-run,2-kick
+    double var_theta;//if run
+    int kick_leg;//if kick
 };
 
 // UdpData data;

@@ -28,7 +28,7 @@
 
 // 不同机器人修改信息
 #define team_input 14   // 队伍名 *********************要修改*********
-#define player_input 2 // 机器人编号 *********************要修改*********
+#define player_input 4 // 机器人编号 *********************要修改*********
 
 struct MyStruct
 {
@@ -80,23 +80,22 @@ void processGameData(const RoboCupGameControlData &gameControlData, MyStruct &my
     int teamIndex1 = 1; //获取自己队伍信息，对方队伍为1
 
     const TeamInfo &teamInfo0 = gameControlData.teams[teamIndex0];
+
     const TeamInfo &teamInfo1 = gameControlData.teams[teamIndex1];
 
     if(static_cast<int>(teamInfo0.teamNumber) == team_input)
     {
         teamIndex = teamIndex0;
-
     }
 
     if(static_cast<int>(teamInfo1.teamNumber) == team_input)
     {
         teamIndex = teamIndex1;
     }
-
-    const TeamInfo &teamInfo = gameControlData.teams[teamIndex];
     
+    const TeamInfo &teamInfo = gameControlData.teams[teamIndex];
 
-
+    std::cout << "------------------------------- " << std::endl;
     std::cout << "------------------------------- " << std::endl;
     std::cout << "Packet Number: " << static_cast<int>(gameControlData.packetNumber) << std::endl;
     std::cout << "Game Type: " << static_cast<int>(gameControlData.gameType) << std::endl;
@@ -107,7 +106,13 @@ void processGameData(const RoboCupGameControlData &gameControlData, MyStruct &my
     std::cout << "Secondary State Info: " << gameControlData.secondaryStateInfo << std::endl
               << std::endl;
 
+    // int teamIndex = 0; //获取自己队伍信息，对方队伍为1
 
+    // if((static_cast<int>(gameControlData.firstHalf)) == 0)
+    // {
+    //     teamIndex = 1;
+    // }
+    // const TeamInfo &teamInfo = gameControlData.teams[teamIndex];
     std::cout << "Team Number: " << static_cast<int>(teamInfo.teamNumber) << std::endl;
     std::cout << "Score: " << static_cast<int>(teamInfo.score) << std::endl;
     std::cout << "Penalty Shot: " << static_cast<int>(teamInfo.penaltyShot) << std::endl;
@@ -204,14 +209,14 @@ int main(int argc, char *argv[])
         perror("套接字创建失败");
         return 1;
     }
-
-    std::string robot_ip;
-    ros::param::set("/pid_amend/local_ip_addr",robot_ip);
-
+    
+    std::string robo_ip;
+    // char* robo_ip;
+    ros::param::get("/pid_amend/local_ip_addr",robo_ip);
 
     // 设置发送数据给 game_controller 的地址
     returnAddr.sin_family = AF_INET;
-    returnAddr.sin_addr.s_addr = inet_addr(robot_ip.c_str()); // 替换为 机器人 的IP地址
+    returnAddr.sin_addr.s_addr = inet_addr(robo_ip.c_str()); // 替换为 机器人 的IP地址
     returnAddr.sin_port = htons(game_controller_RETURN_PORT);
 
     // 设置接收game_controller返回数据的地址
